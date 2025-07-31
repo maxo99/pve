@@ -2,17 +2,17 @@ resource "proxmox_virtual_environment_vm" "cloudinit-example" {
   node_name = "pve"
   vm_id     = 300
   name      = "test-terraform0"
-  
+
   # Reduce timeouts to avoid long waits
-  timeout_create = 300  # 5 minutes
+  timeout_create   = 300 # 5 minutes
   timeout_start_vm = 300 # 5 minutes
-  
+
   started = true
-  on_boot = false  # Don't require the VM to be bootable immediately
+  on_boot = false # Don't require the VM to be bootable immediately
 
   agent {
     enabled = true
-    timeout = "5m"  # Reduce timeout to avoid long waits
+    timeout = "5m" # Reduce timeout to avoid long waits
   }
 
   cpu {
@@ -72,6 +72,13 @@ resource "proxmox_virtual_environment_vm" "cloudinit-example" {
   }
 
   boot_order = ["scsi0"]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      ansible-playbook -i inventory.ini -u ${var.ci_username} --private-key=${var.ssh_private_key_path} ./playbooks/basic.yml
+    EOT
+  }
+
 }
 
 terraform {
@@ -82,6 +89,9 @@ terraform {
     }
   }
 }
+
+
+
 
 provider "proxmox" {
   endpoint = var.proxmox_api_url

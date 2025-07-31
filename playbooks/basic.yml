@@ -1,0 +1,16 @@
+---
+- name: Install basic packages
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install basic utilities
+      apt:
+        name:
+          - curl
+          - vim
+          - git
+        state: present

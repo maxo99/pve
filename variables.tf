@@ -27,6 +27,12 @@ locals {
   ci_ssh_keys = file("~/.ssh/pve/cloud-init.pub")
 }
 
+variable "ssh_private_key_path" {
+  description = "Path to the SSH private key for Ansible"
+  type        = string
+  default     = "~/.ssh/pve/cloud-init"
+}
+
 variable "ci_ssh_keys" {
   description = "Cloud-Init SSH keys"
   type        = string
