@@ -12,5 +12,5 @@
         name:
           - curl
           - vim
-          - git
+          # - git
         state: present

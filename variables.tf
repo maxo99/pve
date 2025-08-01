@@ -23,9 +23,6 @@ variable "ci_password" {
   sensitive   = true
 
 }
-locals {
-  ci_ssh_keys = file("~/.ssh/pve/cloud-init.pub")
-}
 
 variable "ssh_private_key_path" {
   description = "Path to the SSH private key for Ansible"
