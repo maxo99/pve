@@ -1,18 +1,32 @@
 resource "proxmox_virtual_environment_vm" "cloudinit-example" {
   node_name = "pve"
-  vm_id     = 300
+  vm_id     = 310
   name      = "test-terraform0"
 
+  # Comment out clone block since VM already exists
+  clone {
+    vm_id = 9333 # The name/ID of the template
+    full  = true
+  }
+
+
   # Reduce timeouts to avoid long waits
-  timeout_create   = 300 # 5 minutes
-  timeout_start_vm = 300 # 5 minutes
+  timeout_create   = 600 # 10 minutes
+  timeout_start_vm = 600 # 10 minutes
 
   started = true
   on_boot = false # Don't require the VM to be bootable immediately
+  stop_on_destroy = true
+
+  efi_disk {
+    datastore_id = "local-lvm"
+    file_format  = "raw"
+    type         = "4m"
+  }
 
   agent {
     enabled = true
-    timeout = "5m" # Reduce timeout to avoid long waits
+    timeout = "10m"
   }
 
   cpu {
@@ -23,12 +37,8 @@ resource "proxmox_virtual_environment_vm" "cloudinit-example" {
     dedicated = 1024
   }
 
-  clone {
-    vm_id = 9000 # The name/ID of the template
-    full  = true
-  }
 
-  scsi_hardware = "virtio-scsi-single"
+  scsi_hardware = "virtio-scsi-pci"
 
   # Cloud-Init configuration
   initialization {
@@ -37,12 +47,12 @@ resource "proxmox_virtual_environment_vm" "cloudinit-example" {
         address = var.ci_ip_address
         gateway = var.ci_gateway
       }
-    #   dynamic "ipv6" {
-    #     for_each = var.ci_skip_ipv6 ? [] : [1]
-    #     content {
-    #       address = "dhcp"
-    #     }
-    #   }
+      #   dynamic "ipv6" {
+      #     for_each = var.ci_skip_ipv6 ? [] : [1]
+      #     content {
+      #       address = "dhcp"
+      #     }
+      #   }
     }
     # dns {
     #   servers = split(" ", var.ci_nameserver)
@@ -56,13 +66,13 @@ resource "proxmox_virtual_environment_vm" "cloudinit-example" {
   }
 
   # Force VM to restart when IP configuration changes
-  reboot = true
+  # reboot = true
 
   # Disk configuration
   disk {
     datastore_id = "local-lvm"
     interface    = "scsi0"
-    size         = 3
+    size         = 4
   }
 
   # Network configuration
@@ -75,12 +85,25 @@ resource "proxmox_virtual_environment_vm" "cloudinit-example" {
 
   provisioner "local-exec" {
     command = <<EOT
+      echo "Waiting for VM to be fully ready..."
+      
+      # Wait for SSH to be available and cloud-init to complete
+      timeout 300 bash -c '
+        while ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
+          -i ${var.ssh_private_key_path} \
+          ${var.ci_username}@${split("/", var.ci_ip_address)[0]} \
+          "cloud-init status --wait" 2>/dev/null; do
+          echo "Waiting for cloud-init to complete..."
+          sleep 10
+        done
+      '
+      
+      echo "VM is ready, running Ansible..."
       ansible-playbook \
-      -i inventory.ini \
-      -u ${var.ci_username} \
-      --private-key=${var.ssh_private_key_path} \
-      ./playbooks/basic.yml
+        -i inventory.ini \
+        -u ${var.ci_username} \
+        --private-key=${var.ssh_private_key_path} \
+        ./playbooks/basic.yml
     EOT
   }
-
 }

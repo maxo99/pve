@@ -11,12 +11,13 @@ GEN_PASS=$(date +%s | sha256sum | base64 | head -c 16 ; echo) # Random password 
 WORK_DIR="/tmp"
 
 ### Defaults
-CLOUD_PASSWORD_DEFAULT=$GEN_PASS # Password for cloud-init
+# CLOUD_PASSWORD_DEFAULT=$GEN_PASS # Password for cloud-init
+CLOUD_PASSWORD_DEFAULT="JumpingJacks112" # Password for cloud-init
 CLOUD_USER_DEFAULT="root" # User for cloud-init
-LOCAL_LANG="en_GB.UTF-8"
+LOCAL_LANG="en_US.UTF-8"
 SET_X11="yes" # "yes" or "no" required
 VMID_DEFAULT="52000" # VM ID
-X11_LAYOUT="gb"
+X11_LAYOUT="us"
 X11_MODEL="pc105"
 
 ### Virt-Customize variables
@@ -28,20 +29,21 @@ AGENT_ENABLE="1" # Change to 0 if you don't want the guest agent
 BALLOON="768" # Minimum balooning size
 BIOS="ovmf" # Choose between ovmf or seabios
 CORES="2"
-DISK_SIZE="15G"
-DISK_STOR="proxmox" # Name of disk storage within Proxmox
+DISK_SIZE="5G"
+DISK_STOR="local-lvm" # Name of disk storage within Proxmox
 FSTRIM="1"
-MACHINE="q35" # Type of machine. Q35 or i440fx
+MACHINE="Q35" # Type of machine. Q35 or i440fx
 MEM="2048" # Max RAM
-NET_BRIDGE="vmbr1" # Network bridge name
+NET_BRIDGE="vmbr0" # Network bridge name
 TAG="template"
 
 OS_TYPE="l26" # OS type (Linux 6x - 2.6 Kernel)
 # SSH Keys. Unset the variable if you don't want to use this. Use the public key. 
-SSH_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOFLnUCnFyoONBwVMs1Gj4EqERx+Pc81dyhF6IuF26WM proxvms"
-TZ="Europe/London"
-VLAN="50" # Set if you have VLAN requirements
-ZFS="true" # Set to true if you have a ZFS datastore
+SSH_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPUWqp1sMCjjS3NjPEWMnp+dLEpeu/MzCluSC6VOcDz+ Cloud-Init@Terraform"
+TZ="America/New_York"
+VLAN=""
+# VLAN="50" # Set if you have VLAN requirements
+ZFS="false" # Set to true if you have a ZFS datastore
 
 # Notes variable
 NOTES=$(cat << 'EOF'
@@ -288,20 +290,20 @@ copy_cloud_init_config_to_image() {
 # Create the VM
 create_vm() {
     echo "### Creating VM ###"
-    qm create $VMID --name $TEMPL_NAME --memory $MEM --balloon $BALLOON --cores $CORES --bios $BIOS --machine $MACHINE --net0 virtio,bridge=${NET_BRIDGE}${VLAN:+,tag=$VLAN}
+    qm create $VMID --name $TEMPL_NAME --memory $MEM --cores $CORES --bios $BIOS --net0 virtio,bridge=vmbr0
     qm set $VMID --agent enabled=$AGENT_ENABLE,fstrim_cloned_disks=$FSTRIM
     qm set $VMID --ostype $OS_TYPE
-    if [ $ZFS == 'true' ]; then
-        echo "### ZFS set to $ZFS ###"
-        qm importdisk $VMID $WORK_DIR/$DISK_IMAGE $DISK_STOR
-        qm set $VMID --scsihw virtio-scsi-single --scsi0 $DISK_STOR:vm-$VMID-disk-0,cache=writethrough,discard=on,iothread=1,ssd=1
-        qm set $VMID --efidisk0 $DISK_STOR:0,efitype=4m,,pre-enrolled-keys=1,size=1M
-    else
-        echo "### ZFS set to $ZFS ####"
-        qm importdisk $VMID $WORK_DIR/$DISK_IMAGE $DISK_STOR -format qcow2
-        qm set $VMID --scsihw virtio-scsi-single --scsi0 $DISK_STOR:$VMID/vm-$VMID-disk-0.qcow2,cache=writethrough,discard=on,iothread=1,ssd=1
-        qm set $VMID --efidisk0 $DISK_STOR:0,efitype=4m,,format=qcow2,pre-enrolled-keys=1,size=1M
-    fi
+    # if [ $ZFS == 'true' ]; then
+    #     echo "### ZFS set to $ZFS ###"
+    #     qm importdisk $VMID $WORK_DIR/$DISK_IMAGE $DISK_STOR
+    #     qm set $VMID --scsihw virtio-scsi-single --scsi0 $DISK_STOR:vm-$VMID-disk-0,cache=writethrough,discard=on,iothread=1,ssd=1
+    #     qm set $VMID --efidisk0 $DISK_STOR:0,efitype=4m,,pre-enrolled-keys=1,size=1M
+    # else
+    echo "### ZFS set to $ZFS ####"
+    qm importdisk $VMID $WORK_DIR/$DISK_IMAGE $DISK_STOR
+    qm set $VMID --scsihw virtio-scsi-single --scsi0 $DISK_STOR:$VMID/vm-$VMID-disk-0
+    # qm set $VMID --efidisk0 local-lvm,efitype=4m,,format=raw
+    # fi
     qm set $VMID --tags $TAG
     qm set $VMID --scsi1 $DISK_STOR:cloudinit
     qm set $VMID --rng0 source=/dev/urandom
@@ -325,7 +327,7 @@ fi
 # Resize VM disk
 vm_resize() {
 echo "### Resizing VM disk ###"
-qm resize $VMID scsi0 $DISK_SIZE
+# qm resize $VMID scsi0 $DISK_SIZE
 }
 
 ### Run script

@@ -2,6 +2,12 @@ variable "proxmox_api_url" {
   description = "Proxmox API URL"
   type        = string
 }
+
+variable "proxmox_host_ip" {
+  description = "Proxmox host IP address for SSH connections"
+  type        = string
+}
+
 variable "proxmox_user" {
   description = "Proxmox user for API access"
   type        = string
@@ -27,15 +33,15 @@ variable "ci_password" {
 variable "ssh_private_key_path" {
   description = "Path to the SSH private key for Ansible"
   type        = string
-  default     = "~/.ssh/pve/cloud-init"
+  default     = "~/.ssh/pve/root"
 }
 
-variable "ci_ssh_keys" {
-  description = "Cloud-Init SSH keys"
-  type        = string
-  sensitive   = true
+# variable "ci_ssh_keys" {
+#   description = "Cloud-Init SSH keys"
+#   type        = string
+#   sensitive   = true
 
-}
+# }
 variable "ci_nameserver" {
   description = "Cloud-Init nameservers"
   type        = string
@@ -70,4 +76,22 @@ variable "ci_skip_ipv6" {
   description = "Skip IPv6 configuration in Cloud-Init"
   type        = bool
   default     = true
+}
+variable "install_ssh" {
+  type    = bool
+  default = true
+}
+variable "proxmox_ssh" {
+  type        = string
+  description = "SSH connection string for Proxmox host (e.g., user@proxmox-host)"
+}
+
+variable "lxc1_ip_address" {
+  type        = string
+  description = "LXC 1 IP address"
+}
+
+variable "lxc2_ip_address" {
+  type        = string
+  description = "LXC 2 IP address"
 }
