@@ -1,0 +1,7 @@
+[project]
+name = "hashi-vault-test-ansible"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["ansible>=11.8.0", "hvac>=2.3.0"]

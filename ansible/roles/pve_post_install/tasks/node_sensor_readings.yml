@@ -1,0 +1,38 @@
+# Credit: https://github.com/Meliox/PVE-mods?tab=readme-ov-file#install
+- name: Install lm-sensors package
+  become: true
+  ansible.builtin.apt:
+    name: lm-sensors
+    state: present
+    update_cache: yes
+
+- name: Check if sensor modules are already configured
+  become: true
+  ansible.builtin.shell: grep -q "^coretemp\|^w83627hf\|^it87" /etc/modules
+  register: sensors_configured
+  failed_when: false
+  changed_when: false
+
+- name: Configure sensors if not already present
+  when: sensors_configured.rc != 0
+  block:
+
+    - name: Probe and configure sensors (sensors-detect)
+      become: true
+      ansible.builtin.shell: |
+        # This will detect available sensors and create a configuration file.
+        sensors-detect --auto
+
+    - name: Download PVE GUI sensors installer script
+      become: true
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/Meliox/PVE-mods/main/pve-mod-gui-sensors.sh
+        dest: /usr/local/bin/pve-mod-gui-sensors.sh
+        mode: "0755"
+        force: yes
+
+    - name: Run PVE GUI sensors installer
+      become: true
+      ansible.builtin.command: /usr/local/bin/pve-mod-gui-sensors.sh install
+      args:
+        removes: /tmp/pve-mod-gui-sensors.installed

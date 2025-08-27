@@ -1,0 +1,2 @@
+---
+vault_files_path: "{{ playbook_dir }}/roles/vault_deploy/files/"

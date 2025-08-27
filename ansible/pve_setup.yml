@@ -1,0 +1,11 @@
+- name: Proxmox post install configuration
+  hosts: pve_01
+  become: true
+  vars:
+    ansible_user: '{{ pve_root_user }}'
+    # Bootstrap credentials - use --ask-pass for one-time setup
+    # No need to store bootstrap credentials in Vault
+  roles:
+    - pve_post_install
+    # - pve_update_firewall
+    - pve_add_users

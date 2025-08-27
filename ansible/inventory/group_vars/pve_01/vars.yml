@@ -1,0 +1,20 @@
+---
+# PVE-01 Specific Variables
+# These are the MINIMUM required variables that the existing roles expect
+
+# Variables derived from the vault pve_ansible_user: terraform-prov@pve
+pve_ansible_user_ssh: "terraform-prov"  # SSH user on Proxmox host (extracted from pve_ansible_user)
+pve_ansible_user_api_realm: "terraform-prov@pve"  # API user with realm (same as pve_ansible_user)
+
+# Required for API token generation
+pve_ansible_token_id: "ansible-token"   # API token identifier
+
+# SSH key paths for laptop development (Option 1)
+pve_ansible_ssh_private_key_file: "~/.ssh/homelab/terraform-prov"
+pve_ansible_ssh_public_key_file: "~/.ssh/homelab/terraform-prov.pub"
+
+# Groups for Ansible User and Admin User
+pve_ansible_group: "pve_ansible_group"
+pve_admin_group: "pve_admin_group"
+pve_admin_group_role: "Administrator"
+

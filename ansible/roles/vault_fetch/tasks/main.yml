@@ -1,0 +1,14 @@
+---
+- name: Fetch Proxmox secrets from Vault
+  register: proxmox_vault_secrets
+  delegate_to: localhost
+  become: false
+  community.hashi_vault.vault_kv2_get:
+    url: "{{ vault_addr | default(lookup('env', 'VAULT_ADDR')) }}"
+    token: "{{ vault_token | default(lookup('env', 'VAULT_TOKEN')) }}"
+    path: "{{ vault_proxmox_path | default('proxmox') }}"
+    engine_mount_point: "{{ vault_mount_point | default('ansible') }}"
+
+- name: Set Proxmox secrets as facts
+  ansible.builtin.set_fact:
+    proxmox_secrets: "{{ proxmox_vault_secrets.data.data }}"

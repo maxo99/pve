@@ -1,0 +1,32 @@
+---
+# ansible_python_interpreter: /usr/bin/python3
+current_username: maxo
+tasks_dir: ./tasks
+
+timezone: "America/New_York"
+locale: "en_US.UTF-8"
+
+domain: "home.lab"
+dns_servers:
+  - "192.168.4.1" # Gateway
+  - "8.8.8.8" # Google DNS
+  - "1.1.1.1" # Cloudflare DNS
+
+install_zsh: true
+install_oh_my_zsh: true
+push_ssh_keys: true
+
+# SSH Keys from Vault for infrastructure automation
+ansible_management_ssh_public_key: "{{ lookup('community.hashi_vault.hashi_vault', 'terraform/data/ssh_keys/ansible_management:public_key') }}"
+ansible_management_ssh_private_key: "{{ lookup('community.hashi_vault.hashi_vault', 'terraform/data/ssh_keys/ansible_management:private_key') }}"
+
+# Proxmox host SSH key for Terraform access
+proxmox_host_ssh_public_key: "{{ lookup('community.hashi_vault.hashi_vault', 'terraform/data/ssh_keys/proxmox_host:public_key') }}"
+proxmox_host_ssh_private_key: "{{ lookup('community.hashi_vault.hashi_vault', 'terraform/data/ssh_keys/proxmox_host:private_key') }}"
+
+# Needed for uploading SSH keys
+pve_root_user: root
+pve_ansible_user_api_realm: "terraform-prov@pve" # API user with realm (same as pve_ansible_user)
+pve_ansible_token_id: "ansible-token"
+pve_admin_user_api_realm: "admin@pve"
+pve_admin_token_id: "admin-tf"

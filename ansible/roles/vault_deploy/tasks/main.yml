@@ -1,0 +1,122 @@
+---
+- name: debug connection and host info (run once)
+  ansible.builtin.debug:
+    msg: 
+      - "inventory_hostname={{ inventory_hostname }}"
+      - "ansible_connection={{ ansible_connection | default('unset') }}"
+      - "ansible_host={{ ansible_host | default('unset') }}"
+      - "ansible_user={{ ansible_user | default('unset') }}"
+      - "groups_vault={{ groups['vault'] | default([]) }}"
+      - "hostvars_local_ansible_connection={{ hostvars.get('localhost', {}).get('ansible_connection', 'missing') }}"
+  run_once: true
+
+- name: Install docker
+  ansible.builtin.include_tasks: "{{ tasks_dir }}/docker/install.yml"
+
+- name: Set variables
+  ansible.builtin.set_fact:
+    remote_path: "/home/{{ ansible_user }}/docker-compose.yml"
+    local_path: "{{ vault_files_path }}/docker-compose.yml"
+    project_path: "/home/{{ ansible_user }}"
+
+- name: Include update docker-compose
+  ansible.builtin.include_tasks: "{{ tasks_dir }}/docker/update-dockercompose.yml"
+  vars:
+    update_compose_remote_path: "{{ remote_path }}"
+    update_compose_local_path: "{{ local_path }}"
+    update_compose_project_path: "{{ project_path }}"
+
+- name: Copy init-vault.sh (for later use)
+  ansible.builtin.copy:
+    src: "init-vault.sh"
+    dest: "/home/{{ ansible_user }}/init-vault.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Read remote vault-config.json
+  ansible.builtin.stat:
+    path: ~/config/vault-config.json
+  register: remote_config
+
+- name: Read local vault-config.json
+  # Run on the control node without privilege escalation to avoid prompting for a local sudo password
+  ansible.builtin.stat:
+    path: "{{ vault_files_path }}/vault-config.json"
+  register: local_config
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Check file content and set variables
+  ansible.builtin.set_fact:
+    config_different: "{{ not remote_config.stat.exists or remote_config.stat.checksum != local_config.stat.checksum }}"
+
+- name: Deploy Vault container
+  when: config_different
+  block:
+    - name: Ensures /home/{{ ansible_user }}/config/ dir exists
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/config/"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy vault-config.json
+      ansible.builtin.copy:
+        src: "{{ vault_files_path }}/vault-config.json"
+        dest: "/home/{{ ansible_user }}/config/vault-config.json"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: Stop existing Vault container if running
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_path }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Start Vault container
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_path }}"
+        state: present
+
+- name: Ensure Vault container is running
+  community.docker.docker_compose_v2:
+    project_src: "{{ project_path }}"
+    state: present
+  when: not config_different
+
+- name: Wait for Vault to be accessible
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:8200/v1/sys/health"
+    method: GET
+    status_code: [200, 429, 473, 501, 503]
+  register: vault_health
+  retries: 30
+  delay: 2
+  until: vault_health.status is defined
+
+- name: Display deployment completion message
+  ansible.builtin.debug:
+    msg: |
+      ================================
+      VAULT DEPLOYMENT COMPLETE
+      ================================
+      
+      Vault is now accessible at: http://{{ ansible_host }}:8200
+      
+      NEXT STEPS (Manual):
+      1. Access the Vault UI in your browser
+      2. Initialize Vault with single key configuration (1 key share, 1 key threshold)
+      3. Unseal Vault
+      4. Save the root token securely
+      5. Add the root token to your inventory/group_vars/vault file as 'vault_root_token'
+      6. Run the vault_post_install role to complete configuration
+      
+      Current Vault Status: {{ vault_health.status }}
+      Status Meanings:
+      - 200: Initialized, unsealed, and active
+      - 429/501: Uninitialized (ready for manual setup)
+      - 503: Sealed (needs unsealing)

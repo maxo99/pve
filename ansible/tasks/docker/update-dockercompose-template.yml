@@ -1,0 +1,53 @@
+---
+- name: Read remote file
+  ansible.builtin.stat:
+    path: "{{ update_compose_remote_path }}"
+  register: remote_file
+
+- name: Read remote file content
+  ansible.builtin.slurp:
+    src: "{{ update_compose_remote_path }}"
+  register: remote_file_content
+  when: remote_file.stat.exists
+
+- name: Render template as string
+  ansible.builtin.set_fact:
+    template_file_rendered: "{{ lookup('template', template_file_name) }}"
+
+- name: Compare textual contents
+  ansible.builtin.set_fact:
+    contents_different: >
+      {{ not remote_file.stat.exists or ((remote_file_content.content | b64decode).strip() != template_file_rendered.strip()) }}
+
+- name: Check for forced docker-compose update
+  ansible.builtin.set_fact:
+    should_update: "{{ force_update | default(false) | bool or contents_different }}"
+
+- name: Are they different?
+  ansible.builtin.debug:
+     msg: "Files different: {{ contents_different }}. Forced update: {{ force_update | default(false) | bool }}. Proceeding with update: {{ should_update }}"
+
+- name: Perform Docker actions if file copied/different or update forced
+  when: should_update
+  block:
+    - name: Run docker-compose down
+      community.docker.docker_compose_v2:
+        project_src: "{{ update_compose_project_path }}"
+        state: absent
+      when: remote_file.stat.exists
+
+    - name: Copy docker-compose.yml if missing or different
+      ansible.builtin.template:
+        src: "{{ template_file_name }}"
+        dest: "{{ update_compose_remote_path }}"
+        mode: '0644'
+      when: contents_different
+
+    - name: Run docker-compose pull
+      community.docker.docker_compose_v2_pull:
+        project_src: "{{ update_compose_project_path }}"
+
+    - name: Run docker-compose up
+      community.docker.docker_compose_v2:
+        project_src: "{{ update_compose_project_path }}"
+        state: present

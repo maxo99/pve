@@ -1,0 +1,4 @@
+---
+- name: Debug
+  ansible.builtin.debug:
+    msg: "ansible_env.USER: {{ansible_env.USER}} - ansible_user: {{ ansible_user }} - ansible_user_id: {{ ansible_user_id }}  - ansible_user_dir: {{ ansible_user_dir }}"

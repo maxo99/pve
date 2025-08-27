@@ -1,0 +1,309 @@
+## Justfile for Terraform/OpenTofu Operations
+
+set dotenv-load
+# set positional-arguments
+
+ROOT_SSH := "ssh pve-01"
+
+
+default:
+    just --list
+
+
+# apply-auto:
+#     tofu apply -auto-approve
+
+
+
+tf-plan-lxc name:
+    tofu plan -target='module.lxcs["{{name}}"]'
+
+tf-apply-lxc name:
+    tofu apply -target='module.lxcs["{{name}}"]' -auto-approve
+
+tf-destroy-lxc name:
+    tofu destroy -target='module.lxcs["{{name}}"]' -auto-approve
+
+show:
+    tofu show
+
+list:
+    tofu state list
+
+output:
+    tofu output
+
+# Prints a tab-separated list: KEY\tID\tNAME — easy to filter with grep/awk/cut.
+_get-lxcs:
+    #!/bin/bash
+    tofu output -json lxcs | jq -r 'to_entries[] | "\(.key)\t\(.value.id)\t\(.value.name)"'
+
+_get-lxcs-names:
+    #!/bin/bash
+    tofu output -json lxcs | jq -r 'to_entries[] | .value.name'
+
+_get-lxcs-ids:
+    #!/bin/bash
+    tofu output -json lxcs | jq -r 'to_entries[] | .value.id // empty'
+
+for-each-lxc:
+    #!/bin/bash
+    cmd=$(cat -)
+    if [ -z "$cmd" ]; then
+        echo "Usage: just <recipe>  # then pipe a heredoc into 'just for-each-lxc'"
+        exit 1
+    fi
+
+    json=$(tofu output -json lxcs)
+    for container in $(jq -r 'keys[]' <<< "$json"); do
+        id=$(jq -r ".${container}.id" <<< "$json")
+        name=$(jq -r ".${container}.name" <<< "$json")
+        if [ "$id" != "null" ] && [ -n "$id" ]; then
+            ID="$id" NAME="$name" bash -lc "$cmd"
+        fi
+    done
+
+pve-lxc-ips:
+    #!/bin/bash
+    echo "=== LXC Container IP Addresses ==="
+    # Iterate centralized `just _get-lxcs` output (KEY<TAB>ID<TAB>NAME)
+    while IFS=$'\t' read -r key id name; do
+        if [ -n "$id" ] && [ "$id" != "null" ]; then
+            echo "Container: $name (ID: $id)"
+            ssh pve-01 "pct exec $id -- ip addr show eth0 | grep 'inet ' | head -1 | awk '{print \$2}' | cut -d'/' -f1" 2>/dev/null || echo "  Not running or no IP"
+        fi
+    done < <(just _get-lxcs)
+
+lxc-test-ssh:
+    #!/bin/bash
+    echo "=== Testing SSH Access to Containers ==="
+    # Get vm_deployment private key from Vault
+    VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
+    VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
+    
+    if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
+        echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
+        exit 1
+    fi
+    
+    # Get private key from Vault
+    curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/data/ssh_keys/vm_deployment" | \
+        jq -r '.data.data.private_key' > /tmp/vm_deployment_key
+    chmod 600 /tmp/vm_deployment_key
+    
+    # Iterate centralized `just _get-lxcs` output and test SSH on each
+    while IFS=$'\t' read -r key id name; do
+        if [ -n "$id" ] && [ "$id" != "null" ]; then
+            echo "Testing $name (ID: $id)..."
+            ip=$(ssh pve-01 "pct exec $id -- ip addr show eth0 | grep 'inet ' | head -1 | awk '{print \$2}' | cut -d'/' -f1" 2>/dev/null)
+            if [ -n "$ip" ]; then
+                echo "  IP: $ip"
+                timeout 10 ssh -i /tmp/vm_deployment_key -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@$ip "echo '  SSH: ✅ Success (root)'" 2>/dev/null && continue
+                timeout 10 ssh -i /tmp/vm_deployment_key -o ConnectTimeout=5 -o StrictHostKeyChecking=no admin@$ip "echo '  SSH: ✅ Success (admin)'" 2>/dev/null || echo "  SSH: ❌ Failed"
+            else
+                echo "  No IP found"
+            fi
+        fi
+    done < <(just _get-lxcs)
+    rm -f /tmp/vm_deployment_key
+
+validate:
+    tofu validate
+    @echo "=== Checking JSON configuration files ==="
+    @find config/ -name "*.json" -exec echo "Checking {}" \; -exec jq empty {} \;
+
+fmt:
+    tofu fmt -recursive
+
+init:
+    tofu init -upgrade
+
+clean:
+    rm -rf .terraform/
+    rm -f terraform.tfstate.backup
+    rm -f .terraform.lock.hcl
+    @echo "Cleaned Terraform cache files"
+
+vault-debug:
+    #!/bin/bash
+    VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
+    VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
+    
+    if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
+        echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
+        exit 1
+    fi
+    
+    echo "=== Available SSH Keys ==="
+    curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/metadata/ssh_keys/?list=true" | jq -r '.data.keys[]'
+    
+    echo -e "\n=== Available API Credentials ==="
+    curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/metadata/api_credentials/?list=true" | jq -r '.data.keys[]'
+
+pve-debug-containers:
+    #!/bin/bash
+    echo "=== Container Status on PVE ==="
+    ssh pve-01 "pct list"
+    echo -e "\n=== Hook Scripts ==="
+    ssh pve-01 "ls -la /var/lib/vz/snippets/*hook* 2>/dev/null || echo 'No hook scripts found'"
+
+lxc-check-ssh-keys:
+    #!/bin/bash
+    echo "=== SSH Key Configuration Check ==="
+    # Get vm_deployment private key from Vault
+    VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
+    VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
+    
+    if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
+        echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
+        exit 1
+    fi
+    
+    # Get all SSH key fingerprints from Vault
+    echo "=== Vault SSH Key Fingerprints ==="
+    for key_type in vm_deployment ansible_management proxmox_host; do
+        echo "📋 $key_type:"
+        curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/data/ssh_keys/$key_type" | \
+            jq -r '.data.data.public_key' | ssh-keygen -l -f - 2>/dev/null || echo "  ❌ Failed to get fingerprint"
+    done
+    
+    echo -e "\n=== Container SSH Key Configuration ==="
+    while IFS=$'\t' read -r key id name; do
+        if [ -n "$id" ] && [ "$id" != "null" ]; then
+            echo "🔍 $name (ID: $id):"
+            ssh pve-01 "pct exec $id -- bash -c 'if [ -f /root/.ssh/authorized_keys ]; then echo "  Keys found: \$(wc -l < /root/.ssh/authorized_keys)"; cat /root/.ssh/authorized_keys | grep -v "^#" | while read key; do echo "  🔑 \$(echo \$key | ssh-keygen -l -f - 2>/dev/null || echo "Invalid key")"; done; else echo "  ❌ No authorized_keys file"; fi'" 2>/dev/null
+        fi
+    done < <(just _get-lxcs)
+
+lxc-debug-ssh name:
+    #!/bin/bash
+    echo "=== SSH Debug for Container: {{name}} ==="
+    VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
+    VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
+    
+    if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
+        echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
+        exit 1
+    fi
+    
+    # Get container details
+    id=$(tofu output -json lxcs | jq -r '.["{{name}}"].id // empty')
+    container_name=$(tofu output -json lxcs | jq -r '.["{{name}}"].name // empty')
+    
+    if [ -z "$id" ]; then
+        echo "❌ Container '{{name}}' not found"
+        exit 1
+    fi
+    
+    echo "🔍 Container: $container_name (ID: $id)"
+    
+    # Get IP address
+    ip=$(ssh pve-01 "pct exec $id -- ip addr show eth0 | grep 'inet ' | head -1 | awk '{print \$2}' | cut -d'/' -f1" 2>/dev/null)
+    echo "🌐 IP Address: ${ip:-Not found}"
+    
+    # Check container status
+    echo "📊 Container Status:"
+    ssh pve-01 "pct status $id"
+    
+    # Check SSH service
+    echo -e "\n🔧 SSH Service Status:"
+    ssh pve-01 "pct exec $id -- systemctl is-active ssh" 2>/dev/null || echo "  SSH service check failed"
+    
+    # Check authorized_keys
+    echo -e "\n🔑 SSH Keys Configuration:"
+    ssh pve-01 "pct exec $id -- bash -c 'if [ -f /root/.ssh/authorized_keys ]; then echo \"File exists with \$(wc -l < /root/.ssh/authorized_keys) keys:\"; cat /root/.ssh/authorized_keys; else echo \"No authorized_keys file found\"; fi'" 2>/dev/null
+    
+    # Test SSH connection with different keys
+    echo -e "\n🧪 Testing SSH Connections:"
+    for key_type in vm_deployment ansible_management proxmox_host; do
+        echo "Testing with $key_type key..."
+        curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/data/ssh_keys/$key_type" | \
+            jq -r '.data.data.private_key' > /tmp/${key_type}_key
+        chmod 600 /tmp/${key_type}_key
+        
+        if [ -n "$ip" ]; then
+            timeout 5 ssh -i /tmp/${key_type}_key -o ConnectTimeout=3 -o StrictHostKeyChecking=no root@$ip "echo '  ✅ $key_type: Success'" 2>/dev/null || echo "  ❌ $key_type: Failed"
+        else
+            echo "  ⏭️  $key_type: Skipped (no IP)"
+        fi
+        rm -f /tmp/${key_type}_key
+    done
+
+
+
+tf-emergency-cleanup:
+    #!/bin/bash
+    echo "⚠️  This will destroy ALL infrastructure and clean cache files!"
+    read -p "Are you sure? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        just destroy-auto
+        just clean
+        echo "Emergency cleanup completed"
+    else
+        echo "Cancelled"
+    fi
+
+tf-debug args:
+    TF_LOG=DEBUG TF_LOG_PATH=./terraform-debug.log tofu {{args}}
+
+tf-plan-debug:
+    just tf-debug plan
+
+
+
+tf-pve-vm-check-guest-agent vm_id:
+    @echo "Checking QEMU Guest Agent status..."
+    ssh pve-01 "qm agent {{vm_id}} ping" || echo "Guest agent not responding"
+    ssh pve-01 "qm config {{vm_id}} | grep agent" || echo "No agent config found"
+
+tf-pve-vm-check-status vm_id:
+    ssh pve-01 "qm status {{vm_id}}"
+    ssh pve-01 "qm config {{vm_id}}"
+
+
+
+
+# generate-simple-password:
+#   openssl rand -base64 32 | tr -d "=+/" | cut -c1-16
+# Fix SSH keys for a specific container (emergency repair)
+# fix-ssh name:
+#     #!/bin/bash
+#     echo "=== SSH Key Emergency Fix for: {{name}} ==="
+#     VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
+#     VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
+    
+#     if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
+#         echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
+#         exit 1
+#     fi
+    
+#     # Get container details
+#     id=$(tofu output -json lxcs | jq -r '.["{{name}}"].id // empty')
+#     if [ -z "$id" ]; then
+#         echo "❌ Container '{{name}}' not found"
+#         exit 1
+#     fi
+    
+#     echo "🔧 Fixing SSH keys for container ID: $id"
+    
+#     # Backup existing keys
+#     echo "💾 Backing up existing authorized_keys..."
+#     ssh pve-01 "pct exec $id -- cp /root/.ssh/authorized_keys /root/.ssh/authorized_keys.backup 2>/dev/null || echo 'No existing keys to backup'"
+    
+#     # Get all SSH keys from Vault and reinstall them
+#     echo "🔑 Reinstalling SSH keys from Vault..."
+#     rm -f /tmp/all_ssh_keys
+#     for key_type in vm_deployment ansible_management proxmox_host; do
+#         echo "Adding $key_type key..."
+#         curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/data/ssh_keys/$key_type" | \
+#             jq -r '.data.data.public_key' >> /tmp/all_ssh_keys
+#     done
+    
+#     # Install keys to container
+#     ssh pve-01 "pct exec $id -- mkdir -p /root/.ssh && pct exec $id -- chmod 700 /root/.ssh"
+#     scp /tmp/all_ssh_keys pve-01:/tmp/new_keys
+#     ssh pve-01 "cat /tmp/new_keys | pct exec $id -- tee /root/.ssh/authorized_keys > /dev/null && pct exec $id -- chmod 600 /root/.ssh/authorized_keys && rm /tmp/new_keys"
+#     rm -f /tmp/all_ssh_keys
+    
+#     echo "✅ SSH keys reinstalled. Testing connection..."
+#     just debug-ssh {{name}}

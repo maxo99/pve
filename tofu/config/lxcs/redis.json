@@ -1,0 +1,26 @@
+{
+  "container_name": "redis-cache",
+  "container_id": 2007,
+  "description": "Container LXC Redis Cache Server",
+  "tags": ["cache", "redis", "nosql", "lxc"],
+  "memory": 1024,
+  "cores": 1,
+  "disk_size": 8,
+  "packages": [
+    "redis-server",
+    "redis-tools"
+  ],
+  "custom_scripts": [
+    "# Configure Redis",
+    "sed -i 's/^bind 127.0.0.1 ::1$/bind 0.0.0.0/' /etc/redis/redis.conf",
+    "sed -i 's/^# requirepass foobared$/requirepass redispassword123/' /etc/redis/redis.conf",
+    "systemctl enable redis-server",
+    "systemctl restart redis-server",
+    "# Test Redis",
+    "sleep 2",
+    "redis-cli -a redispassword123 ping",
+    "echo \"Redis Cache Server installed and configured successfully!\"",
+    "echo \"Access: redis-cli -h $(hostname -I | awk '{print $1}') -a redispassword123\"",
+    "systemctl status redis-server --no-pager"
+  ]
+}

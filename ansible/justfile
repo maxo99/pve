@@ -1,0 +1,129 @@
+## Justfile
+
+set dotenv-load
+
+
+
+default:
+    just --list
+
+ansible-list:
+    .venv/bin/ansible-inventory --list -v
+
+create_ssh_key_tprov:
+    echo 'Creating SSH key for terraform-prov@pve...'
+    mkdir -p ~/.ssh/homelab
+    ssh-keygen \
+        -t ed25519 \
+        -f ~/.ssh/homelab/terraform-prov \
+        -C "terraform-prov@pve"
+
+
+create_ssh_key_root:
+    echo 'Creating SSH key for root user...'
+    mkdir -p ~/.ssh/homelab
+    ssh-keygen \
+        -t ed25519 \
+        -f ~/.ssh/homelab/root \
+        -C "root@pam"
+
+
+copy-ssh-key-to-proxmox_tprov:
+    @echo "Copying SSH key to Proxmox host ${PVE_01} for terraform user..."
+    scp ~/.ssh/homelab/terraform-prov.pub root@${PVE_01}:/tmp/terraform-prov.pub
+    ssh root@${PVE_01} "mkdir -p /home/terraform-prov/.ssh"
+    ssh root@${PVE_01} "cat /tmp/terraform-prov.pub >> /home/terraform-prov/.ssh/authorized_keys"
+    ssh root@${PVE_01} "chown -R terraform:terraform /home/terraform-prov/.ssh"
+    ssh root@${PVE_01} "chmod 700 /home/terraform-prov/.ssh && chmod 600 /home/terraform-prov/.ssh/authorized_keys"
+    ssh root@${PVE_01} "rm /tmp/terraform-prov.pub"
+
+# copy-ssh-key-to-proxmox_root:
+#     @echo "Copying SSH key to Proxmox host ${PVE_01} for root user..."
+#     scp ~/.ssh/homelab/root.pub root@${PVE_01}:/tmp/root.pub
+#     ssh root@${PVE_01} << EOF
+#     echo "Creating .ssh directory for root user..."
+#     mkdir -p /home/root/.ssh
+#     echo "Appending public key to authorized_keys..."
+#     cat /tmp/root.pub >> /home/root/.ssh/authorized_keys
+#     echo "Setting ownership and permissions for .ssh directory..."
+#     chown -R root:root /home/root/.ssh
+#     chmod 700 /home/root/.ssh
+#     chmod 600 /home/root/.ssh/authorized_keys
+#     echo "Cleaning up temporary public key file..."
+#     rm /tmp/root.pub
+
+
+
+
+
+vault-health:
+    @echo "Checking Vault health..."
+    curl -s ${VAULT_ADDR}/v1/sys/health | jq .
+
+
+vault-store-pve-secrets:
+    @echo "Storing minimal PVE secrets in Vault..."
+    @echo "Using Vault at: ${VAULT_ADDR}"
+    curl -H "X-Vault-Token: ${VAULT_TOKEN}" \
+         -H "Content-Type: application/json" \
+         -X POST \
+         -d '{"data":{"pve_admin_user_realm":"'${PVE_ADMIN_USER_REALM}'","pve_admin_password":"'${PVE_ADMIN_PASSWORD}'"}}' \
+         ${VAULT_ADDR}/v1/ansible/data/proxmox
+
+vault-get-pve-secrets:
+    @echo "Retrieving PVE secrets from Vault..."
+    @echo "Using Vault at: ${VAULT_ADDR}"
+    curl -H "X-Vault-Token: ${VAULT_TOKEN}" \
+         ${VAULT_ADDR}/v1/terraform/data/ssh_keys/ansible_management | jq .
+
+vault-get-api-creds:
+    @echo "Retrieving API credentials from Vault..."
+    @echo "Using Vault at: ${VAULT_ADDR}"
+    curl -H "X-Vault-Token: ${VAULT_TOKEN}" \
+         ${VAULT_ADDR}/v1/terraform/data/api_credentials/pve-01-admin-tf | jq .
+
+
+
+
+vault-deploy:
+    .venv/bin/ansible-playbook \
+    vault_deploy.yml \
+    -b \
+    --ask-pass --ask-become-pass \
+    -v
+
+vault-update-init-script:
+    @echo "Copying init-vault.sh to vault host..."
+    scp roles/vault_deploy/files/init-vault.sh rvault@${VAULT_HOST}:~/init-vault.sh
+
+
+
+vault-configure:
+    .venv/bin/ansible-playbook \
+    vault_post_install.yml \
+    -b \
+    --ask-pass --ask-become-pass \
+    -v
+
+# vault-configure-recreate-keys:
+#     @echo "Running vault configuration with SSH key recreation..."
+#     .venv/bin/ansible-playbook \
+#     vault_post_install.yml \
+#     -b \
+#     --ask-pass --ask-become-pass \
+#     -e force_recreate_ssh_keys=true \
+#     -v
+
+
+vault-creds-store:
+    @echo "Storing Proxmox API credentials in Vault..."
+    .venv/bin/ansible-playbook \
+    vault_store_creds.yml \
+    -b \
+    --ask-pass --ask-become-pass \
+    -v
+
+
+pve-setup:
+    .venv/bin/ansible-playbook pve_setup.yml -b --ask-pass --ask-become-pass -v 
+

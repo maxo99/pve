@@ -1,0 +1,45 @@
+---
+# - name: Verify prereq
+#   hosts: localhost
+#   become: true
+#   gather_facts: true
+#   roles:
+#     - role: prereq
+#     - role: localhost
+
+# - name: Verify ssh key presence
+#   hosts: pve_01
+#   become: true
+#   gather_facts: true
+#   roles:
+#     - role: push_ssh_key
+#       when: push_ssh_keys
+
+# - name: Update and upgrade
+#   hosts: all_servers
+#   become: true
+#   gather_facts: true
+#   roles:
+#     - role: apt
+    # - role: k3s-prereq
+
+# - name: Configure proxmox hosts
+#   hosts: proxmox
+#   become: true
+#   gather_facts: true
+#   roles:
+#     - role: proxmox
+
+# - name: Configure mediaserver
+#   hosts: mediaserver
+#   become: true
+#   gather_facts: true
+#   roles:
+#     - role: mediaserver
+
+# - name: Configure wireguard
+#   hosts: wireguard
+#   become: true
+#   gather_facts: true
+#   roles:
+#     - role: wireguard

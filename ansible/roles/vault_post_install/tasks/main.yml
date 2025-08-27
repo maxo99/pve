@@ -1,0 +1,50 @@
+---
+- name: Verify required variables
+  ansible.builtin.assert:
+    that:
+      - vault_root_token is defined
+      - vault_root_token != ""
+      - vault_root_token != "your-root-token-here"
+    fail_msg: |
+      ERROR: vault_root_token is not properly configured.
+      Please set vault_root_token in your inventory/group_vars/vault file
+      with the root token obtained during manual Vault initialization.
+
+- name: Check Vault status
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:8200/v1/sys/health"
+    method: GET
+  register: vault_status
+
+- name: Verify Vault is ready for configuration
+  ansible.builtin.assert:
+    that:
+      - vault_status.status == 200
+    fail_msg: |
+      ERROR: Vault is not ready for configuration.
+      Current status: {{ vault_status.status }}
+      
+      Status meanings:
+      - 200: Ready (initialized and unsealed)
+      - 429/501: Uninitialized
+      - 503: Sealed
+      
+      Please ensure Vault is initialized and unsealed before running this role.
+
+- name: Configure Vault (KV engines, auth methods, policies)
+  ansible.builtin.command:
+    cmd: >-
+      docker exec -e VAULT_ADDR="http://127.0.0.1:8200"
+      -e VAULT_TOKEN="{{ vault_root_token }}"
+      -e FORCE_RECREATE_SSH_KEYS="{{ force_recreate_ssh_keys | default('false') }}"
+      vault /init-vault.sh
+  register: vault_config_result
+
+- name: Display Vault configuration results
+  ansible.builtin.debug:
+    msg: |
+      ================================
+      VAULT CONFIGURATION COMPLETE
+      ================================
+      
+      {{ vault_config_result.stdout }}
