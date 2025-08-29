@@ -1,0 +1,27 @@
+---
+- name: Store Proxmox API credentials in Vault
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  
+  vars:
+    vault_root_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') }}"
+    pve_host: "pve-01"
+    user_name: "admin"
+    user_api_realm: "{{ pve_admin_user_api_realm }}"
+    user_token_id: "{{ pve_admin_token_id }}"
+    #
+    # user_name: "terraform-prov"
+    # user_api_realm: "{{ pve_ansible_user_api_realm | default('terraform-prov@pve') }}"
+    # user_token_id: "{{ pve_ansible_token_id | default('ansible-token') }}"
+  tasks:
+    - name: Store Proxmox API credentials
+      ansible.builtin.include_role:
+        name: vault_store_creds
+      vars:
+        # Build the token file path using the same pattern as vault.yml
+        token_id: "{{ user_api_realm }}!{{ user_token_id }}"
+        api_token_file_path: "{{ lookup('env', 'HOME') }}/.homelab/.ansible/{{ pve_host }}-{{ user_token_id }}"
+        vault_url_path: "{{ vault_addr }}/v1/terraform/data/api_credentials/{{ pve_host }}-{{ user_token_id }}"

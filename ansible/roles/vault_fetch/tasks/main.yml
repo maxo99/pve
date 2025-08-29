@@ -1,0 +1,23 @@
+---
+- name: Fetch Proxmox secrets from Vault
+  block:
+    - name: Attempt to fetch Proxmox secrets from Vault
+      register: proxmox_vault_secrets
+      delegate_to: localhost
+      become: false
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr | default(lookup('env', 'VAULT_ADDR')) }}"
+        token: "{{ vault_token | default(lookup('env', 'VAULT_TOKEN')) }}"
+        path: "{{ vault_proxmox_path | default('proxmox') }}"
+        engine_mount_point: "{{ vault_mount_point | default('terraform') }}"
+      failed_when: false
+  rescue:
+    - name: Set empty proxmox_vault_secrets when path missing or fetch failed
+      ansible.builtin.set_fact:
+        proxmox_vault_secrets: {'data': {'data': {}}}
+      when: proxmox_vault_secrets is not defined or (proxmox_vault_secrets is defined and (proxmox_vault_secrets.failed | default(false) or proxmox_vault_secrets.rc is defined and proxmox_vault_secrets.rc != 0))
+
+- name: Set Proxmox secrets as facts
+  ansible.builtin.set_fact:
+    # If the fetch succeeded and returned the expected structure, use it; otherwise set an empty dict
+    proxmox_secrets: "{{ (proxmox_vault_secrets is defined and proxmox_vault_secrets.data is defined and proxmox_vault_secrets.data.data is defined) | ternary(proxmox_vault_secrets.data.data, {}) }}"

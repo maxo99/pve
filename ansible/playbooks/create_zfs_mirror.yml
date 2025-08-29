@@ -1,0 +1,71 @@
+---
+- name: Prepare generated key on controller (if needed)
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../inventory/group_vars/pve_01/vault.yml
+  tasks:
+    - name: Fetch ZFS secrets from Vault using the shared role (localhost)
+      ansible.builtin.include_role:
+        name: vault_fetch
+      vars:
+        vault_proxmox_path: "zfs_keys"
+        vault_mount_point: "terraform"
+
+    - name: Set zfs_encryption_key from fetched secrets on localhost if present
+      ansible.builtin.set_fact:
+        zfs_encryption_key: "{{ proxmox_secrets.zfs_encryption_key }}"
+      when: proxmox_secrets is defined and proxmox_secrets.zfs_encryption_key is defined
+      no_log: true
+
+    - name: Generate ZFS encryption key on controller when doing a forced redeploy/wipe and no key exists
+      ansible.builtin.set_fact:
+        generated_zfs_key: "{{ lookup('password','/dev/null length=64 chars=ascii_letters,digits') }}"
+      run_once: true
+      when: >-
+        zfs_redeploy | default(false) and zfs_force_wipe | default(false)
+        and (zfs_encryption_key is not defined or (zfs_encryption_key | default('') == ''))
+      no_log: true
+
+    - name: Store generated ZFS key to Vault using shared role when generated (localhost)
+      ansible.builtin.include_role:
+        name: vault_store_creds
+      vars:
+        vault_secret_path: "terraform/data/zfs_keys"
+        vault_secret_data:
+          zfs_encryption_key: "{{ generated_zfs_key }}"
+      when: generated_zfs_key is defined
+      run_once: true
+      no_log: true
+
+- name: Create ZFS mirror pool on Proxmox node
+  hosts: pve_01
+  become: true
+  vars_files:
+    - ../inventory/group_vars/pve_01/vault.yml
+  pre_tasks:
+    - name: Expose generated key to the target host as zfs_encryption_key
+      ansible.builtin.set_fact:
+        zfs_encryption_key: "{{ hostvars['localhost'].generated_zfs_key | default(hostvars['localhost'].zfs_encryption_key | default('')) }}"
+      when: hostvars['localhost'].generated_zfs_key is defined or hostvars['localhost'].zfs_encryption_key is defined
+      no_log: true
+
+    - name: Fetch ZFS secrets from Vault using the shared role (host)
+      ansible.builtin.include_role:
+        name: vault_fetch
+      vars:
+        vault_proxmox_path: "zfs_keys"
+        vault_mount_point: "terraform"
+
+    - name: Set zfs_encryption_key from fetched secrets if present (host-level)
+      ansible.builtin.set_fact:
+        zfs_encryption_key: "{{ proxmox_secrets.zfs_encryption_key }}"
+      when: proxmox_secrets is defined and proxmox_secrets.zfs_encryption_key is defined
+      no_log: true
+
+  roles:
+    - role: zfs_mirror
+      vars:
+        zfs_pool_name: tank
+        zfs_create_encrypted_dataset: true
+        zfs_encrypted_dataset_name: longterm

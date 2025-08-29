@@ -1,0 +1,76 @@
+---
+- name: Read remote docker-compose
+  ansible.builtin.stat:
+    path: "{{ update_compose_remote_path }}"
+  register: remote_file
+
+- name: Read local file content on control node
+  ansible.builtin.set_fact:
+    local_file_content: "{{ lookup('file', update_compose_local_path) }}"
+  run_once: true
+
+- name: Set local checksum fact
+  ansible.builtin.set_fact:
+    local_file:
+      stat:
+        checksum: "{{ local_file_content | hash('sha1') }}"
+  run_once: true
+
+- name: Check contents and set variables
+  ansible.builtin.set_fact:
+    contents_different: "{{ not remote_file.stat.exists or (remote_file.stat.checksum != local_file.stat.checksum) }}"
+
+- name: Check for forced docker-compose update
+  ansible.builtin.set_fact:
+    should_update: "{{ force_update | default(false) | bool or contents_different }}"
+
+- name: Ensure update_compose_project_path is set
+  ansible.builtin.set_fact:
+    update_compose_project_path: "{{ update_compose_project_path | default(update_compose_remote_path | dirname) }}"
+
+- name: Are they different?
+  ansible.builtin.debug:
+    msg: "Files different: {{ contents_different }}. Forced update: {{ force_update | default(false) | bool }}. Proceeding with update: {{ should_update }}"
+
+- name: List project directory and check for compose files (run once)
+  ansible.builtin.shell: |
+    echo "project_src={{ update_compose_project_path }}"
+    ls -la "{{ update_compose_project_path }}" || true
+    for f in compose.yml compose.yml docker-compose.yaml docker-compose.yml; do
+      if [ -f "{{ update_compose_project_path }}"/$f ]; then
+        echo "FOUND: $f"
+      fi
+    done
+  register: project_dir_listing
+  changed_when: false
+  run_once: true
+
+- name: Show project directory listing
+  ansible.builtin.debug:
+    var: project_dir_listing.stdout_lines
+  run_once: true
+
+- name: Perform Docker actions if file copied/different or update forced
+  when: should_update
+  block:
+    - name: Run docker-compose down
+      community.docker.docker_compose_v2:
+        project_src: "{{ update_compose_project_path }}"
+        state: absent
+      when: remote_file.stat.exists
+
+    - name: Copy docker-compose.yml if missing or different
+      ansible.builtin.copy:
+        src: "{{ update_compose_local_path }}"
+        dest: "{{ update_compose_remote_path }}"
+        mode: '0644'
+      when: contents_different
+
+    - name: Run docker-compose pull
+      community.docker.docker_compose_v2_pull:
+        project_src: "{{ update_compose_project_path }}"
+
+    - name: Run docker-compose up
+      community.docker.docker_compose_v2:
+        project_src: "{{ update_compose_project_path }}"
+        state: present

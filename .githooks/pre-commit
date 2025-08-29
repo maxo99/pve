@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Repo-managed pre-commit hook to automatically rename staged .yaml -> .yml
+set -euo pipefail
+
+renamed=0
+
+while IFS= read -r -d '' file; do
+  case "$file" in
+    *.yaml)
+      new="${file%.yaml}.yml"
+      if [ -e "$new" ]; then
+        echo "ERROR: target already exists: $new"
+        echo "Please resolve naming conflict before committing."
+        exit 1
+      fi
+      echo "Renaming staged file: $file -> $new"
+      git mv -f -- "$file" "$new"
+      git add -- "$new"
+      renamed=1
+      ;;
+    *) ;;
+  esac
+done < <(git diff --cached --name-only --diff-filter=ACMR -z || true)
+
+if [ "$renamed" -eq 1 ]; then
+  echo "Index updated: .yaml -> .yml. Re-run 'git commit' if needed."
+fi
+
+exit 0

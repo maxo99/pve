@@ -1,0 +1,74 @@
+---
+# This task file deploys SSH keys to users for automation access
+# Called from playbooks via include_tasks
+
+# Use the SSH key from group_vars (sourced from Vault)
+- name: Set SSH public key based on type
+  set_fact:
+    ssh_public_key: "{{ proxmox_host_ssh_public_key if ssh_key_type == 'proxmox_host' else ansible_management_ssh_public_key }}"
+
+# Directory management and SSH permissions
+- name: Ensure the SSH directory exists
+  file:
+    path: "/home/{{ ansible_user }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: true
+
+- name: Ensure authorized_keys exists
+  file:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    state: touch
+    mode: '0600'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: true
+
+# Check existing SSH key
+- name: Check if SSH key already exists in authorized_keys
+  shell: "grep -F \"{{ ssh_public_key }}\" /home/{{ ansible_user }}/.ssh/authorized_keys || echo 'not_found'"
+  register: key_exists
+  changed_when: false
+  failed_when: false
+  become: true
+  become_user: "{{ ansible_user }}"
+
+# Added key only if not present
+- name: Add SSH public key if not present
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ ssh_public_key }}"
+    manage_dir: false
+  become: true
+  when: key_exists.stdout == 'not_found'
+
+# Set permission for authorized_keys
+- name: Set correct permissions for authorized_keys
+  file:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    mode: '0600'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: true
+
+# Configure sudo without password (only for non-root users)
+- name: Check if sudoers configuration exists
+  stat:
+    path: "/etc/sudoers.d/{{ ansible_user }}"
+  register: sudoers_file
+  become: true
+  when: ansible_user != 'root'
+
+- name: Configure sudo without password
+  lineinfile:
+    path: "/etc/sudoers.d/{{ ansible_user }}"
+    line: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL"
+    state: present
+    create: true
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  become: true
+  when: ansible_user != 'root' and not sudoers_file.stat.exists

@@ -1,0 +1,113 @@
+---
+# Generic store: write arbitrary KV v2 secret if caller provided `vault_secret_path` + `vault_secret_data`.
+- name: Validate input for vault_store operation
+  ansible.builtin.assert:
+    that:
+      - "(vault_secret_path is defined and vault_secret_data is defined) or (token_id is defined and api_token_file_path is defined and vault_url_path is defined and vault_root_token is defined)"
+    fail_msg: |
+      ERROR: Missing required variables.
+      Provide either:
+        - vault_secret_path and vault_secret_data (generic KV v2 write),
+      or:
+        - token_id, api_token_file_path, vault_url_path and vault_root_token (legacy Proxmox API path)
+
+- name: Store generic secret in Vault (KV v2)
+  ansible.builtin.uri:
+    url: "{{ vault_addr | default(lookup('env','VAULT_ADDR')) }}/v1/{{ vault_secret_path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_root_token | default(lookup('env','VAULT_TOKEN')) }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      data: "{{ vault_secret_data }}"
+    status_code: [200, 204]
+  delegate_to: localhost
+  become: false
+  when:
+    - vault_secret_path is defined
+    - vault_secret_data is defined
+  no_log: true
+  register: vault_store_result_generic
+
+- name: Display success message for generic secret
+  ansible.builtin.debug:
+    msg: "Stored secret at {{ vault_secret_path }}"
+  when: vault_store_result_generic is succeeded
+
+# Legacy path: store Proxmox API credentials if caller used the old variables. Kept for backward compatibility.
+- block:
+    - name: Check if API token file exists locally
+      ansible.builtin.stat:
+        path: "{{ api_token_file_path }}"
+      delegate_to: localhost
+      register: token_file_stat
+
+    - name: Read API token from local file
+      ansible.builtin.slurp:
+        src: "{{ api_token_file_path }}"
+      delegate_to: localhost
+      register: api_token_content
+      when: token_file_stat.stat.exists
+
+    - name: Extract token value
+      ansible.builtin.set_fact:
+        api_token_value: "{{ api_token_content.content | b64decode | trim }}"
+      when: token_file_stat.stat.exists
+
+    - name: Check Vault status
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/sys/health"
+        method: GET
+      register: vault_status
+
+    - name: Verify Vault is ready
+      ansible.builtin.assert:
+        that:
+          - vault_status.status == 200
+        fail_msg: |
+          ERROR: Vault is not ready. Status: {{ vault_status.status }}
+          Please ensure Vault is initialized and unsealed.
+
+    - name: Store Proxmox API credentials in Vault
+      ansible.builtin.uri:
+        url: "{{ vault_url_path }}"
+        method: POST
+        headers:
+          X-Vault-Token: "{{ vault_root_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          data:
+            token_id: "{{ token_id }}"
+            token_secret: "{{ api_token_value }}"
+        status_code: [200, 204]
+      when: 
+        - token_file_stat.stat.exists
+        - api_token_value is defined
+      register: vault_store_result
+
+    - name: Display success message (legacy)
+      ansible.builtin.debug:
+        msg: |
+          ================================
+          PROXMOX API CREDENTIALS STORED
+          ================================
+          
+          Token ID: {{ token_id }}
+          Vault Path: {{ vault_url_path }}
+      when: vault_store_result is succeeded
+
+    - name: Handle missing token file
+      ansible.builtin.debug:
+        msg: |
+          ================================
+          WARNING: API TOKEN FILE NOT FOUND
+          ================================
+          
+          Expected file: {{ api_token_file_path }}
+          
+          Please ensure the API token has been generated and saved to this file.
+          You can run the pve_add_users role to generate the token first.
+      when: not token_file_stat.stat.exists
+  when: vault_secret_data is not defined

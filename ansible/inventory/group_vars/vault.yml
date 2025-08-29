@@ -1,0 +1,42 @@
+# ENSURE TO MODIFY THE VALUES TO YOUR VARIABLES AND YOUR LIKING
+# Except the api_token_file_path, all other files and variables should be existing before running any playbook
+
+########################
+## VAULT MANAGEMENT   ##
+########################
+# Set this after manual Vault initialization
+# vault_root_token: "your-root-token-from-vault-init"
+# Consider using ansible-vault encrypt for security:
+# ansible-vault encrypt_string 'your-actual-root-token' --name 'vault_root_token'
+vault_root_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+vault_addr: "{{ lookup('env', 'VAULT_ADDR') }}"
+########################
+## PROXMOX MANAGEMENT ##
+########################
+# Proxmox root default user
+pve_root_user: root
+# Option 1: Laptop-based SSH key paths (aligned with justfile)
+# pve_root_ssh_private_key_file: "~/.ssh/homelab/root"
+pve_root_ssh_public_key_file: "~/.ssh/homelab/root.pub"
+
+# Ansible Proxmox ssh and API user information
+pve_ansible_user: terraform-prov@pve
+pve_ansible_ssh_private_key_file: "~/.ssh/homelab/terraform-prov"
+pve_ansible_ssh_public_key_file: "~/.ssh/homelab/terraform-prov.pub"
+pve_ssh_port: 22
+
+# - Proxmox nodes API Tokens - #
+# The add_user role will create a file with the token id to be used everytime you'll create a virtual machine for example
+api_token_file_path: "~/.homelab/.ansible/{{ inventory_hostname }}-{{ pve_ansible_token_id }}"
+
+###################
+## VM MANAGEMENT ##
+###################
+
+# # Virtual Machines User Management
+# vm_admin_ssh_private_key_file: "~/.ssh/homelab"
+# vm_admin_ssh_public_key_file: "~/.ssh/homelab.pub"
+
+# vm_ansible_user: vm_ansible_user
+# vm_ansible_ssh_private_key_file: "~/.ssh/ansible2_id_rsa"
+# vm_ansible_ssh_public_key_file: "~/.ssh/ansible2_id_rsa.pub"

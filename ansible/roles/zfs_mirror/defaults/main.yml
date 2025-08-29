@@ -1,0 +1,33 @@
+---
+# Default variables for zfs_mirror role
+zfs_pool_name: tank
+zfs_disks: []
+# If true, will wipe existing signatures and attempt to create the pool anyway.
+# WARNING: setting this to true will wipe existing signatures (LUKS) on the target disks
+# Set to true for a first run if you are sure you want to destroy existing disk contents.
+zfs_force_wipe: false
+# Create an encrypted dataset (dataset will be named <pool>/longterm)
+zfs_create_encrypted_dataset: true
+zfs_encrypted_dataset_name: longterm
+# Encryption key (should be provided via vault)
+zfs_encryption_key: ''
+# zfs properties
+zfs_compression: lz4
+zfs_atime: off
+zfs_ashift: 12
+# Scrub schedule (systemd OnCalendar value)
+zfs_scrub_oncalendar: monthly
+
+# Deploy encryption key to host and create a systemd unit to load it at boot.
+# Storing the key on the host is a security trade-off; the keyfile will be owned by root and mode 0600.
+zfs_deploy_key_to_host: true
+zfs_deploy_key_path: "/etc/zfs/keys/{{ zfs_pool_name }}-{{ zfs_encrypted_dataset_name }}.key"
+
+# Proxmox storage config defaults
+zfs_proxmox_enabled: true
+zfs_proxmox_content: "images,rootdir"
+zfs_proxmox_nodes: []
+
+# If true, will force re-create pool/dataset (export/destroy then recreate)
+# Useful for initial install or reconfigure: set to true to redeploy.
+zfs_redeploy: false
