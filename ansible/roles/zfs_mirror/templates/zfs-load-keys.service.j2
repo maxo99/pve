@@ -1,0 +1,12 @@
+[Unit]
+Description=Load ZFS dataset keys
+DefaultDependencies=no
+After=local-fs.target
+Before=zfs-mount.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/sbin/zfs load-key -a >/dev/null 2>&1 || true'
+
+[Install]
+WantedBy=multi-user.target

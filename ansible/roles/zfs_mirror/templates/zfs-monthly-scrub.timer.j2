@@ -1,0 +1,9 @@
+[Unit]
+Description=Run zfs-monthly-scrub timer
+
+[Timer]
+OnCalendar={{ zfs_scrub_oncalendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

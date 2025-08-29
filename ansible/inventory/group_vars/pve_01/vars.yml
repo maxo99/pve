@@ -18,3 +18,8 @@ pve_ansible_group: "pve_ansible_group"
 pve_admin_group: "pve_admin_group"
 pve_admin_group_role: "Administrator"
 
+# Devices for ZFS mirror (use /dev/disk/by-id for stability)
+zfs_disks:
+  - /dev/disk/by-id/ata-WDC_WD80EFAX-68LHPN0_7SGGDB1C
+  - /dev/disk/by-id/ata-WDC_WD80EDAZ-11TA3A0_VGGRXGAG
+

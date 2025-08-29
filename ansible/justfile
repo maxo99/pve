@@ -123,7 +123,30 @@ vault-creds-store:
     --ask-pass --ask-become-pass \
     -v
 
+vault-store-zfs-key:
+    @echo "Storing ZFS encryption key in Vault (example). Ensure VAULT_ADDR and VAULT_TOKEN are set."
+    .venv/bin/ansible-playbook \
+    vault_store_secret.yml \
+    -v
+
 
 pve-setup:
     .venv/bin/ansible-playbook pve_setup.yml -b --ask-pass --ask-become-pass -v 
+
+
+pve-create-zfs-mirror:
+    .venv/bin/ansible-playbook \
+    playbooks/create_zfs_mirror.yml \
+    -b \
+    --ask-pass --ask-become-pass --ask-vault-pass \
+    -v
+
+
+pve-create-zfs-mirror-force:
+    .venv/bin/ansible-playbook \
+    playbooks/create_zfs_mirror.yml \
+    -b \
+    --ask-pass --ask-become-pass \
+    -v \
+    -e zfs_redeploy=true -e zfs_force_wipe=true
 

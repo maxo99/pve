@@ -1,0 +1,302 @@
+---
+- name: Ensure running on Linux
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian' or ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Suse'
+    fail_msg: "This role is intended for Linux hosts with ZFS support (Debian/Ubuntu/Proxmox/CentOS/SUSE)."
+
+- name: Install ZFS packages
+  ansible.builtin.package:
+    name:
+      - zfsutils-linux
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Validate zfs_disks provided
+  ansible.builtin.assert:
+    that:
+      - zfs_disks is defined
+      - zfs_disks | length > 0
+    fail_msg: "You must define 'zfs_disks' (list of /dev/disk/by-id/ paths)."
+
+- name: Check disks exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ zfs_disks }}"
+  register: disk_stats
+
+- name: Fail if any disk path missing
+  ansible.builtin.fail:
+    msg: "Disk {{ item.item }} does not exist on the host"
+  loop: "{{ disk_stats.results }}"
+  when: not item.stat.exists
+
+- name: Detect LUKS signatures on disks
+  ansible.builtin.shell: "blkid -o value -s TYPE {{ item }} || true"
+  loop: "{{ zfs_disks }}"
+  register: disk_types
+  changed_when: false
+
+- name: Check if zpool already exists
+  ansible.builtin.command:
+    cmd: "zpool list -H {{ zfs_pool_name }}"
+  register: zpool_check
+  failed_when: false
+  changed_when: false
+
+- name: Set zpool exists fact
+  ansible.builtin.set_fact:
+    zpool_exists: "{{ zpool_check.rc == 0 }}"
+
+
+- name: Collect disks that look like LUKS
+  ansible.builtin.set_fact:
+    luks_disks: "{{ disk_types.results | selectattr('stdout','search','crypto_LUKS') | map(attribute='item') | list }}"
+
+- name: Abort if LUKS disks found and not forcing
+  ansible.builtin.fail:
+    msg: "Found LUKS signatures on disks {{ luks_disks }}; set zfs_force_wipe=true to force wiping them."
+  when: luks_disks | length > 0 and not zfs_force_wipe
+
+- name: Wipe filesystem signatures on disks (when forced)
+  ansible.builtin.command: "wipefs -a {{ item }}"
+  loop: "{{ luks_disks }}"
+  when: zfs_force_wipe and luks_disks | length > 0
+
+- name: Handle redeploy export and destroy existing zpool if requested
+  block:
+    - name: Export existing zpool
+      ansible.builtin.command: "zpool export {{ zfs_pool_name }}"
+      register: zpool_export
+      failed_when: false
+      changed_when: zpool_export.rc == 0
+
+    - name: Destroy existing zpool metadata (force)
+      ansible.builtin.command: "zpool destroy -f {{ zfs_pool_name }}"
+      register: zpool_destroy
+      failed_when: false
+      changed_when: zpool_destroy.rc == 0
+
+    - name: Wipe disks when redeploy is requested
+      ansible.builtin.command: "wipefs -a {{ item }}"
+      loop: "{{ zfs_disks }}"
+      when: zfs_redeploy
+  when: zpool_exists and zfs_redeploy
+
+- name: Create ZFS pool if not present
+  ansible.builtin.command:
+    cmd: >-
+      zpool create -f -o ashift={{ zfs_ashift }} {{ zfs_pool_name }} mirror {{ zfs_disks | join(' ') }}
+    creates: "/{{ zfs_pool_name }}"
+  register: zpool_create
+  failed_when: (zpool_create.rc is defined and zpool_create.rc != 0) and ('already exists' not in (zpool_create.stderr | default('')))
+  changed_when: zpool_create.rc is defined and zpool_create.rc == 0
+  when: not zpool_exists
+
+- name: Check zpool exists after create attempt
+  ansible.builtin.command:
+    cmd: "zpool list -H {{ zfs_pool_name }}"
+  register: zpool_check_after_create
+  failed_when: false
+  changed_when: false
+
+- name: Set zpool_exists based on the fresh check
+  ansible.builtin.set_fact:
+    zpool_exists: "{{ zpool_check_after_create.rc == 0 }}"
+
+- name: Check if dataset exists
+  ansible.builtin.command:
+    cmd: "zfs list -H {{ zfs_pool_name }}/{{ zfs_encrypted_dataset_name }}"
+  register: dataset_check
+  failed_when: false
+  changed_when: false
+
+- name: Set dataset exists fact
+  ansible.builtin.set_fact:
+    dataset_exists: "{{ dataset_check.rc == 0 }}"
+
+- name: Ensure pool properties
+  ansible.builtin.set_fact:
+    # normalize the atime value so booleans (True/False) become 'on'/'off'
+    zfs_atime_norm: "{{ (zfs_atime is boolean) and (zfs_atime | ternary('on','off')) or (zfs_atime | string | lower) }}"
+  when: zpool_exists
+
+- name: Ensure pool compression is set
+  ansible.builtin.command:
+    cmd: "zfs set compression={{ zfs_compression }} {{ zfs_pool_name }}"
+  when: zpool_exists
+
+- name: Ensure pool atime is set
+  ansible.builtin.command:
+    cmd: "zfs set atime={{ zfs_atime_norm }} {{ zfs_pool_name }}"
+  when: zpool_exists
+
+- name: Create encrypted dataset if requested
+  block:
+    - name: Ensure key directory exists and is secure (pre-create)
+      ansible.builtin.file:
+        path: "{{ zfs_deploy_key_path | dirname }}"
+        owner: root
+        group: root
+        mode: '0700'
+        state: directory
+      when: zfs_deploy_key_to_host
+
+    - name: Deploy encryption key to host for dataset creation
+      ansible.builtin.assert:
+        that:
+          - zfs_encryption_key is defined
+          - (zfs_encryption_key | length) >= 8
+        fail_msg: "zfs_encryption_key is not defined or is too short (<8). Provide a key in Vault at 'terraform/data/zfs_keys' or enable generation via zfs_redeploy and zfs_force_wipe."
+      when: zfs_deploy_key_to_host
+
+    - name: Deploy encryption key to host for dataset creation
+      ansible.builtin.copy:
+        content: "{{ zfs_encryption_key }}\n"
+        dest: "{{ zfs_deploy_key_path }}"
+        owner: root
+        group: root
+        mode: '0600'
+      no_log: true
+      when: zfs_deploy_key_to_host
+
+    - name: Destroy existing dataset if redeploy requested
+      ansible.builtin.command: >-
+        zfs destroy -r {{ zfs_pool_name }}/{{ zfs_encrypted_dataset_name }}
+      register: destroy_dataset
+      failed_when: false
+      changed_when: destroy_dataset.rc == 0
+      when: dataset_exists and zfs_redeploy
+
+    - name: Stat deployed key file (debugging check)
+      ansible.builtin.stat:
+        path: "{{ zfs_deploy_key_path }}"
+      register: zfs_key_stat
+      when: zfs_deploy_key_to_host
+
+    - name: Ensure deployed key file exists and is non-empty (friendly error)
+      ansible.builtin.assert:
+        that:
+          - zfs_key_stat is defined
+          - zfs_key_stat.stat.exists
+          - zfs_key_stat.stat.size | default(0) > 0
+        fail_msg: "ZFS key file {{ zfs_deploy_key_path }} missing or empty on host; check previous tasks or Vault fetch/store."
+      when: zfs_deploy_key_to_host
+
+    - name: Assert target zpool exists before creating encrypted dataset
+      ansible.builtin.assert:
+        that:
+          - zpool_exists
+        fail_msg: "Target zpool '{{ zfs_pool_name }}' does not exist on the host; ensure the pool was created successfully before creating datasets."
+      when: not dataset_exists
+
+    # Temporarily set no_log: false to capture zfs create error output for debugging.
+    # This will NOT print the key contents (the command references the key file path only).
+    # Revert this change after debugging to re-hide secret material.
+    - name: Create encrypted dataset using deployed key file
+      ansible.builtin.command:
+        cmd: >-
+          zfs create -o encryption=on -o keyformat=passphrase -o keylocation=file://{{ zfs_deploy_key_path }} {{ zfs_pool_name }}/{{ zfs_encrypted_dataset_name }}
+      register: create_dataset
+      failed_when: (create_dataset.rc is defined and create_dataset.rc != 0) and ('already exists' not in (create_dataset.stderr | default('')))
+      changed_when: create_dataset.rc == 0
+      no_log: false
+      when: not dataset_exists
+
+    - name: Debug zfs create failure (show stdout/stderr)
+      ansible.builtin.debug:
+        msg: |
+          zfs create returned rc={{ create_dataset.rc }}
+          STDOUT: {{ create_dataset.stdout | default('') }}
+          STDERR: {{ create_dataset.stderr | default('') }}
+      when: create_dataset is defined and create_dataset.rc is defined and create_dataset.rc != 0
+      # keep this visible so we can triage; remove/no_log revert after root cause fixed
+      no_log: false
+
+    - name: Load ZFS keys now
+      ansible.builtin.command: /sbin/zfs load-key -a
+      register: load_keys
+      changed_when: false
+      failed_when: false
+      when: zfs_deploy_key_to_host
+
+    - name: Mount ZFS datasets
+      ansible.builtin.command: /sbin/zfs mount -a
+      register: mount_zfs
+      changed_when: false
+      failed_when: false
+      when: zfs_deploy_key_to_host
+  when: zfs_create_encrypted_dataset
+
+
+# key dir and deployment handled earlier to ensure keylocation points to the deployed file
+
+- name: Install zfs-load-keys systemd unit
+  ansible.builtin.template:
+    src: zfs-load-keys.service.j2
+    dest: /etc/systemd/system/zfs-load-keys.service
+  notify: daemon-reload
+
+- name: Reload systemd daemon to pick up new unit immediately
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Enable and start zfs-load-keys.service
+  ansible.builtin.systemd:
+    name: zfs-load-keys.service
+    enabled: yes
+    state: started
+
+
+- name: Register zpool in Proxmox storage.cfg
+  block:
+    - name: Read existing storage.cfg
+      ansible.builtin.slurp:
+        src: /etc/pve/storage.cfg
+      register: storage_cfg_raw
+      failed_when: false
+
+    - name: Decode storage.cfg content for checking
+      ansible.builtin.set_fact:
+        storage_cfg_text: "{{ (storage_cfg_raw.content | default('') ) | b64decode }}"
+
+    - name: Set flag if zfspool stanza exists
+      ansible.builtin.set_fact:
+        storage_zfspool_exists: "{{ 'zfspool: ' + zfs_pool_name in storage_cfg_text }}"
+
+    - name: Append zfs storage stanza if missing
+      ansible.builtin.blockinfile:
+        path: /etc/pve/storage.cfg
+        marker: "# {mark} ANSIBLE MANAGED ZFSPOOL {{ zfs_pool_name }}"
+        block: |
+          zfspool: {{ zfs_pool_name }}
+            pool {{ zfs_pool_name }}
+            content {{ zfs_proxmox_content }}
+      when: not storage_zfspool_exists
+  when: zfs_proxmox_enabled
+
+- name: Create non-encrypted dataset if not requested
+  ansible.builtin.command: >-
+    zfs create {{ zfs_pool_name }}/{{ zfs_encrypted_dataset_name }}
+  when: not zfs_create_encrypted_dataset
+  register: create_dataset_plain
+  failed_when: create_dataset_plain.rc != 0 and 'already exists' not in create_dataset_plain.stderr
+
+
+- name: Install systemd service unit template for zpool scrub
+  ansible.builtin.template:
+    src: zfs-monthly-scrub.service.j2
+    dest: /etc/systemd/system/zfs-monthly-scrub.service
+  notify: daemon-reload
+
+- name: Install systemd timer unit template for zpool scrub
+  ansible.builtin.template:
+    src: zfs-monthly-scrub.timer.j2
+    dest: /etc/systemd/system/zfs-monthly-scrub.timer
+  notify: daemon-reload
+
+- name: Enable and start zfs-monthly-scrub.timer
+  ansible.builtin.systemd:
+    name: zfs-monthly-scrub.timer
+    enabled: yes
+    state: started

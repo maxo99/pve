@@ -1,0 +1,6 @@
+[Unit]
+Description=ZFS monthly scrub
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/zpool scrub {{ zfs_pool_name }}
