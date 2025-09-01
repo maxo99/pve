@@ -1,32 +1,94 @@
-#cloud-config
-package_update: true
-package_upgrade: true
+# #cloud-config
+# package_update: true
+# package_upgrade: true
 
-# Basic packages common to all VMs
-packages:
-  - qemu-guest-agent
-  - curl
-  - nano
-  - zsh
-  - git
+# # Basic packages common to all VMs
+# packages:
+#   - qemu-guest-agent
+#   - curl
+#   - nano
+#   - zsh
+#   - git
 
-# Creating users
-users:
-  - name: ${default_user}
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/zsh
-    ssh_authorized_keys:
-      - ${ssh_pub_key}
+# # Creating users
+# users:
+#   - name: ${default_user}
+#     sudo: ALL=(ALL) NOPASSWD:ALL
+#     shell: /bin/zsh
+#     # Set a default password for debugging (change after deployment)
+#     passwd: '$6$rounds=4096$salted$hash'
+#     lock_passwd: false
+#     ssh_authorized_keys:
+#       - ${ssh_pub_key}
+#   # Also ensure root has password access for emergency debugging
+#   - name: root
+#     passwd: '$6$rounds=4096$salted$hash'
+#     lock_passwd: false
+#     ssh_authorized_keys:
+#       - ${ssh_pub_key}
 
-# Basic commands common to all VMs
-runcmd:
-  - systemctl enable qemu-guest-agent
-  - systemctl start qemu-guest-agent
-  # Configure Zsh as the default shell
-  - mkdir -p /home/${default_user}/.zsh
-  - wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O /home/${default_user}/install_oh_my_zsh.sh
-  - chmod +x /home/${default_user}/install_oh_my_zsh.sh
-  - sudo -u ${default_user} /home/${default_user}/install_oh_my_zsh.sh --unattended
-  - rm /home/${default_user}/install_oh_my_zsh.sh
-  # Configure user home directory
-  - chown -R ${default_user}:${default_user} /home/${default_user}
+# # Enable password authentication for SSH (for debugging)
+# ssh_pwauth: true
+# chpasswd:
+#   list: |
+#     ${default_user}:ubuntu123
+#     root:ubuntu123
+#   expire: false
+
+# # Basic commands common to all VMs
+# runcmd:
+#   # Install and enable qemu-guest-agent first (critical for Proxmox communication)
+#   - systemctl stop qemu-guest-agent || true
+#   - systemctl disable qemu-guest-agent || true
+#   - systemctl enable qemu-guest-agent
+#   - systemctl start qemu-guest-agent
+#   # Wait for guest agent to be fully operational with better error handling
+#   - timeout 60 bash -c 'until systemctl is-active --quiet qemu-guest-agent; do echo "Waiting for qemu-guest-agent..."; sleep 2; done' || echo "Guest agent failed to start properly"
+#   # Verify the agent is actually communicating (not just running)
+#   - sleep 5
+#   - systemctl status qemu-guest-agent --no-pager || echo "Guest agent status check failed"
+#   # Restart once more to ensure proper initialization
+#   - systemctl restart qemu-guest-agent
+#   - sleep 3
+#   # Configure Zsh as the default shell
+#   - mkdir -p /home/${default_user}/.zsh
+#   - wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O /home/${default_user}/install_oh_my_zsh.sh
+#   - chmod +x /home/${default_user}/install_oh_my_zsh.sh
+#   - sudo -u ${default_user} /home/${default_user}/install_oh_my_zsh.sh --unattended
+#   - rm /home/${default_user}/install_oh_my_zsh.sh
+#   # Configure user home directory
+#   - chown -R ${default_user}:${default_user} /home/${default_user}
+#   # Final guest agent verification
+#   - echo "Final guest agent check:" >> /tmp/cloud-init-agent-setup.log
+#   - systemctl is-active qemu-guest-agent >> /tmp/cloud-init-agent-setup.log || echo "FAILED" >> /tmp/cloud-init-agent-setup.log
+
+# # Ensure cloud-init waits for all services to be ready
+# final_message: "Cloud-init finished. QEMU guest agent is ready for Proxmox communication."
+
+# # Write status files to track installation progress
+# write_files:
+#   - path: /tmp/cloud-init-agent-setup.log
+#     content: |
+#       Cloud-init agent setup started
+#       QEMU guest agent package installed: qemu-guest-agent
+#       Services will be enabled and started during runcmd phase
+#       Debug info: Password auth enabled for ubuntu123/ubuntu123
+#     owner: root:root
+#     permissions: '0644'
+#   - path: /tmp/guest-agent-debug.sh
+#     content: |
+#       #!/bin/bash
+#       echo "=== QEMU Guest Agent Debug Information ==="
+#       echo "Date: $(date)"
+#       echo "Service status:"
+#       systemctl status qemu-guest-agent --no-pager
+#       echo -e "\nProcess check:"
+#       pgrep -fl qemu-ga || echo "No qemu-ga process found"
+#       echo -e "\nSocket check:"
+#       ls -la /dev/virtio-ports/org.qemu.guest_agent.0 2>/dev/null || echo "No guest agent socket found"
+#       echo -e "\nSystemctl is-active:"
+#       systemctl is-active qemu-guest-agent
+#       echo -e "\nJournal logs (last 10 lines):"
+#       journalctl -u qemu-guest-agent --no-pager -n 10
+#     owner: root:root
+#     permissions: '0755'

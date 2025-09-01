@@ -26,17 +26,15 @@ provider "vault" {
 
 provider "proxmox" {
   endpoint = var.proxmox_api_url
-  # Use root@pam authentication for hook script operations
   username = "root@pam"
   password = module.vault_secrets.proxmox_root_password
-  insecure = true # TODO: Get a valid SSL certificate for local
-
+  insecure = true
+  
   ssh {
-    agent = true
+    agent = false
     username = "terraform-prov"
-    # Use dedicated SSH key for host operations
     private_key = module.vault_secrets.proxmox_ssh_private_key
-
+    
     node {
       name    = var.default_node
       address = var.proxmox_host_ip

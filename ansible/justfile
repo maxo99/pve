@@ -1,3 +1,5 @@
+pve-compare-templates:
+    ssh pve-01 "qm template 100 >/dev/null 2>&1; qm template 52000 >/dev/null 2>&1; qm config 100; echo '---'; qm config 52000"
 ## Justfile
 
 set dotenv-load
@@ -132,6 +134,10 @@ vault-store-zfs-key:
 
 pve-setup:
     .venv/bin/ansible-playbook pve_setup.yml -b --ask-pass --ask-become-pass -v 
+
+pve-create-vm-template:
+    .venv/bin/ansible-playbook playbooks/create_vm_template.yml -b --ask-pass --ask-become-pass -v \
+    -e vault_token=${VAULT_TOKEN} -e vault_url=${VAULT_ADDR}
 
 
 pve-create-zfs-mirror:

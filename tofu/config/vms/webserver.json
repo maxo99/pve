@@ -1,0 +1,33 @@
+{
+    "vm_name": "webserver-app",
+    "vm_id": 1005,
+    "node_name": "pve-01",
+    "description": "Server Web per applicazione",
+    "tags": ["web", "app", "frontend"],
+    "memory": 2048,
+    "cores": 2,
+    "disk_size": 4,
+    "network_bridge": "vmbr0",
+    "ip_config": {
+      "ipv4_address": "dhcp",
+      "gateway": ""
+    },
+    "datastore_id": "local-lvm",
+    "start_at_boot": true,
+    "packages": [
+      "nginx",
+      "nodejs",
+      "npm",
+      "python3",
+      "git",
+      "jq"
+    ],
+    "custom_scripts": [
+      "systemctl enable nginx",
+      "systemctl start nginx",
+      "mkdir -p /var/www/app",
+      "chown -R ubuntu:ubuntu /var/www/app",
+      "npm install -g pm2",
+      "echo 'VM updated with jq package' > /tmp/vm-update-test.log"
+    ]
+  }

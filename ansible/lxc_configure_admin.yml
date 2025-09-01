@@ -1,0 +1,42 @@
+---
+- name: Configure LXC container with admin user using Vault password
+  hosts: "{{ target_host | default('localhost') }}"
+  gather_facts: false
+  vars:
+    vault_mount_point: "terraform"
+  
+  tasks:
+    - name: Fetch admin password from Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ lookup('env','VAULT_ADDR') }}"
+        token: "{{ lookup('env','VAULT_TOKEN') }}"
+        path: "{{ vault_kv_path }}"
+        engine_mount_point: "{{ vault_mount_point }}"
+      delegate_to: localhost
+      register: vault_password_result
+      
+    - name: Set admin password fact
+      ansible.builtin.set_fact:
+        admin_password: "{{ vault_password_result.data.data[admin_user] }}"
+      no_log: true
+      
+    - name: Create admin user in LXC container
+      ansible.builtin.shell: |
+        pct exec {{ container_id }} -- useradd -m -s /bin/bash {{ admin_user }} || true
+        pct exec {{ container_id }} -- bash -c "echo '{{ admin_user }}:{{ admin_password }}' | chpasswd"
+        pct exec {{ container_id }} -- usermod -aG sudo {{ admin_user }}
+        pct exec {{ container_id }} -- bash -c "echo '{{ admin_user }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{{ admin_user }}"
+        pct exec {{ container_id }} -- chmod 440 /etc/sudoers.d/{{ admin_user }}
+      delegate_to: "{{ proxmox_host | default('localhost') }}"
+      become: true
+      vars:
+        ansible_ssh_private_key_file: "~/.ssh/pve/root"
+        ansible_user: root
+      when: admin_password is defined
+      no_log: true
+      
+    - name: Display success message
+      ansible.builtin.debug:
+        msg: |
+          Admin user {{ admin_user }} configured successfully in container {{ container_id }}
+          Password stored in Vault at {{ vault_kv_path }}

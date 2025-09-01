@@ -45,17 +45,24 @@ Network details, DNS servers, domain, and timezone are configured in `ansible/in
 - ✅ **Hook Script Automation**: Automated package installation and user configuration via Proxmox hook scripts
 - ✅ **Multi-key SSH Access**: All three SSH keys (VM deployment, Ansible management, Proxmox host) automatically configured in containers
 - ✅ **SSH Investigation Tools**: Comprehensive justfile commands for SSH debugging and troubleshooting
+- ✅ **VM Infrastructure**: Standard Proxmox provider approach for VM deployment with proper cloud-init and guest agent integration
+- ✅ **VM SSH Automation**: Working SSH key injection and cloud-init configuration following provider best practices
+- ✅ **VM Template System**: JSON-based VM configuration system with packages and custom script support
 
 ### Current Approach
 
-- **SSH Key Automation**: Proxmox native SSH key injection for LXC containers using `user_account.keys` array
+- **SSH Key Automation**: 
+  - **LXC**: Proxmox native SSH key injection for containers using `user_account.keys` array
+  - **VM**: Standard provider approach with `user_account` + `user_data_file_id` separation for cloud-init
 - **Hook Script Operations**: Terraform uses root@pam authentication for LXC hook script deployment and execution
-- **Multi-Key Strategy**: All three SSH keys (proxmox_host, vm_deployment, ansible_management) automatically injected into containers
+- **Multi-Key Strategy**: All three SSH keys (proxmox_host, vm_deployment, ansible_management) automatically injected into containers and VMs
 - **Container Initialization**: Hook scripts handle package installation, user creation, and service configuration
-- **SSH Configuration**: Direct SSH access available immediately after container creation without manual intervention
+- **VM Initialization**: Standard cloud-init with provider-managed user accounts and custom package/script configuration
+- **SSH Configuration**: Direct SSH access available immediately after container/VM creation without manual intervention
 - **Vault Integration**: Both Ansible and Terraform retrieve API credentials and SSH keys from Vault
 - **Secure Operations**: root@pam for hook scripts, terraform-prov for SSH host access, comprehensive SSH key coverage
-- **Infrastructure as Code**: Full LXC container lifecycle management via OpenTofu with JSON configuration files
+- **Infrastructure as Code**: Full LXC container and VM lifecycle management via OpenTofu with JSON configuration files
+- **Provider Compliance**: VM provisioning follows official bpg/proxmox provider documentation exactly
 
 ### Key Files and Configurations
 
