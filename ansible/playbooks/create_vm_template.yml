@@ -1,0 +1,6 @@
+# ---
+# - name: Create Proxmox VM template
+#   hosts: pve_01
+#   become: true
+#   roles:
+#     - pve_create_vm_template

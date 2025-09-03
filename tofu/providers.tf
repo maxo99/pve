@@ -1,8 +1,11 @@
 terraform {
+  backend "local" {
+    path = ".tfstate/terraform.tfstate"
+  }
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = "0.81.0"
+      version = "0.83.0"
     }
     ansible = {
       source  = "ansible/ansible"
@@ -26,18 +29,28 @@ provider "vault" {
 
 provider "proxmox" {
   endpoint = var.proxmox_api_url
+
+  insecure  = true
+  api_token = var.virtual_environment_token
+
+  ssh {
+    agent    = true
+    username = "root"
+    #   private_key = module.vault_secrets.ssh_private_key
+  }
+}
+
+
+# LXC snippets require root@pam
+provider "proxmox" {
+  alias    = "lxc"
+  endpoint = var.proxmox_api_url
   username = "root@pam"
   password = module.vault_secrets.proxmox_root_password
   insecure = true
   
   ssh {
-    agent = false
-    username = "terraform-prov"
-    private_key = module.vault_secrets.proxmox_ssh_private_key
-    
-    node {
-      name    = var.default_node
-      address = var.proxmox_host_ip
-    }
+    agent    = true
+    username = "root"
   }
 }

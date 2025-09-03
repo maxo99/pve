@@ -1,0 +1,120 @@
+# ---
+# - name: Ensure required packages are installed
+#   apt:
+#     name:
+#       - libguestfs-tools
+#       - wget
+#     state: present
+#   become: true
+
+# - name: Create working directory
+#   file:
+#     path: "{{ work_dir }}"
+#     state: directory
+#     mode: '0755'
+
+# - name: Set Ubuntu image variables
+#   set_fact:
+#     disk_image: "{{ ubuntu_version }}-server-cloudimg-amd64.img"
+#     image_url: "https://cloud-images.ubuntu.com/{{ ubuntu_version }}/current/{{ ubuntu_version }}-server-cloudimg-amd64.img"
+
+# - name: Download Ubuntu cloud image
+#   get_url:
+#     url: "{{ image_url }}"
+#     dest: "{{ work_dir }}/{{ disk_image }}"
+#     mode: '0644'
+#     force: no
+
+# - name: Customize image with virt-customize (timezone)
+#   shell: "virt-customize -a {{ work_dir }}/{{ disk_image }} --timezone {{ tz }}"
+#   when: tz is defined
+
+# - name: Customize image with virt-customize (locale and keyboard)
+#   shell: |
+#     virt-customize -a {{ work_dir }}/{{ disk_image }} \
+#       --firstboot-command "localectl set-locale LANG={{ local_lang }}" \
+#       --firstboot-command "localectl set-x11-keymap {{ x11_layout }} {{ x11_model }}"
+#   when: set_x11 == 'yes'
+
+# - name: Update system and install packages in image
+#   shell: "virt-customize -a {{ work_dir }}/{{ disk_image }} --update --install {{ virt_pkgs }}"
+
+# - name: Install extra packages in image
+#   shell: "virt-customize -a {{ work_dir }}/{{ disk_image }} --update --install {{ extra_virt_pkgs }}"
+#   when: extra_virt_pkgs|length > 0
+
+# - name: Create Proxmox cloud-init config file
+#   copy:
+#     dest: "{{ work_dir }}/cloudinit-{{ vmid }}.cfg"
+#     content: |
+#       # to update this file, run dpkg-reconfigure cloud-init
+#       datasource_list: [ NoCloud, ConfigDrive ]
+#     mode: '0644'
+
+# - name: Upload cloud-init config to image
+#   shell: "virt-customize -a {{ work_dir }}/{{ disk_image }} --upload {{ work_dir }}/cloudinit-{{ vmid }}.cfg:/etc/cloud/cloud.cfg.d/"
+
+# - name: Check if VM ID exists
+#   shell: "qm list | awk '{print $1}' | grep -q '^{{ vmid }}$'"
+#   register: vmid_exists
+#   ignore_errors: true
+
+# - name: Fail if VM ID exists
+#   fail:
+#     msg: "VM with ID {{ vmid }} already exists. Choose a different VMID."
+#   when: vmid_exists.rc == 0
+
+
+# - name: Install and enable qemu-guest-agent in image
+#   shell: |
+#     virt-customize -a {{ work_dir }}/{{ disk_image }} \
+#       --install qemu-guest-agent \
+#       --run-command 'systemctl enable qemu-guest-agent' \
+#       --run-command 'systemctl start qemu-guest-agent'
+
+# - name: Create VM
+#   shell: |
+#     qm create {{ vmid }} --name {{ template_name }} --memory {{ memory }} --cores {{ cores }} --bios {{ bios }} --net0 virtio,bridge={{ net_bridge }}
+#     qm set {{ vmid }} --agent {{ agent_enable }}
+#     qm set {{ vmid }} --ostype {{ os_type }}
+#     qm importdisk {{ vmid }} {{ work_dir }}/{{ disk_image }} {{ disk_storage }}
+#     qm set {{ vmid }} --scsihw virtio-scsi-pci
+#     qm set {{ vmid }} --scsi0 {{ disk_storage }}:vm-{{ vmid }}-disk-0,discard=on,ssd=1
+#     qm set {{ vmid }} --efidisk0 {{ disk_storage }}:base-{{ vmid }}-disk-0,efitype=4m,size=4M
+#     qm set {{ vmid }} --ide2 {{ disk_storage }}:vm-{{ vmid }}-cloudinit,media=cdrom
+#     qm set {{ vmid }} --serial0 socket
+#     qm set {{ vmid }} --localtime 1
+#     qm set {{ vmid }} --onboot 1
+#     qm set {{ vmid }} --tags {{ tag }}
+#     qm set {{ vmid }} --ciuser {{ cloud_user }}
+#     qm set {{ vmid }} --cipassword '{{ cloud_password }}'
+#     qm set {{ vmid }} --boot order=scsi0
+#     qm set {{ vmid }} --tablet 0
+#     qm set {{ vmid }} --ipconfig0 ip=dhcp
+#     qm cloudinit update {{ vmid }}
+#     qm set {{ vmid }} --description "{{ notes }}"
+#   args:
+#     executable: /bin/bash
+
+# - name: Apply SSH key
+#   shell: "qm set {{ vmid }} --sshkey <(echo '{{ ssh_key }}')"
+#   when: ssh_key is defined and ssh_key|length > 0
+#   args:
+#     executable: /bin/bash
+
+
+# - name: Convert VM to template
+#   shell: "qm template {{ vmid }}"
+#   args:
+#     executable: /bin/bash
+
+# - name: Output VM details
+#   debug:
+#     msg:
+#       - "VMID: {{ vmid }}"
+#       - "Template Name: {{ template_name }}"
+#       - "Image Path: {{ work_dir }}/{{ disk_image }}"
+#       - "Ubuntu Version: {{ ubuntu_version }}"
+#       - "Cloud User: {{ cloud_user }}"
+#       - "Disk Storage: {{ disk_storage }}"
+#       - "Network Bridge: {{ net_bridge }}"

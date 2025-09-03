@@ -1,171 +1,60 @@
-# # resource "proxmox_virtual_environment_vm" "cloudinit-example" {
-# #   vm_id     = 310
-# #   name      = "test-terraform0"
-# #   node_name = "pve"
+locals {
+  # Scanning JSON configuration files for VMs
+  vm_files = fileset("${path.module}/config/vms/", "*.json")
 
-# #   # Comment out clone block since VM already exists
-# #   clone {
-# #     vm_id = 9333 # The name/ID of the template
-# #     full  = true
-# #   }
-
-
-# #   # # Reduce timeouts to avoid long waits
-# #   # timeout_create   = 600 # 10 minutes
-# #   # timeout_start_vm = 600 # 10 minutes
-
-# #   started         = true
-# #   on_boot         = false # Don't require the VM to be bootable immediately
-# #   stop_on_destroy = true
-
-# #   efi_disk {
-# #     datastore_id = "local-lvm"
-# #     file_format  = "raw"
-# #     type         = "4m"
-# #   }
-
-# #   agent {
-# #     enabled = true
-# #     timeout = "10m"
-# #   }
-
-# #   cpu {
-# #     cores = 2
-# #   }
-
-# #   memory {
-# #     dedicated = 1024
-# #   }
+  # Load JSON files and convert them to configuration maps
+  vm_configs = {
+    for file in local.vm_files :
+    trimsuffix(basename(file), ".json") => jsondecode(file("${path.module}/config/vms/${file}"))
+  }
+}
 
 
-# #   scsi_hardware = "virtio-scsi-pci"
+resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
+  content_type        = "import"
+  datastore_id        = "local"
+  node_name           = "pve-01"
+  url                 = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+  file_name           = "jammy-server-cloudimg-amd64.qcow2"
+  overwrite           = true
+  overwrite_unmanaged = true
+}
 
-# #   # Cloud-Init configuration
-# #   initialization {
-# #     ip_config {
-# #       ipv4 {
-# #         address = var.ci_ip_address
-# #         gateway = var.ci_gateway
-# #       }
-# #       #   dynamic "ipv6" {
-# #       #     for_each = var.ci_skip_ipv6 ? [] : [1]
-# #       #     content {
-# #       #       address = "dhcp"
-# #       #     }
-# #       #   }
-# #     }
-# #     # dns {
-# #     #   servers = split(" ", var.ci_nameserver)
-# #     # }
-# #     user_account {
-# #       username = var.ci_username
-# #       password = var.ci_password
-# #       keys     = [local.ci_ssh_keys]
-# #     }
-# #     vendor_data_file_id = "local:snippets/qemu-guest-agent.yml"
-# #   }
+# VM creation from configuration files
+module "vms" {
+  source   = "./modules/proxmox-vm"
+  for_each = local.vm_configs
 
-# #   # Force VM to restart when IP configuration changes
-# #   # reboot = true
+  # Core VM parameters
+  ssh_public_key        = local.ssh_public_key
+  ssh_private_key       = local.ssh_private_key
+  cloud_image_id        = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
+  snippets_datastore_id = var.snippets_datastore_id
+  default_user          = var.default_user
 
-# #   # Disk configuration
-# #   disk {
-# #     datastore_id = "local-lvm"
-# #     interface    = "scsi0"
-# #     size         = 4
-# #   }
+  # Specific parameters from JSON configuration
+  vm_name        = each.value.vm_name
+  vm_id          = each.value.vm_id
+  node_name      = lookup(each.value, "node_name", var.default_node)
+  description    = lookup(each.value, "description", "VM ${each.key}")
+  tags           = lookup(each.value, "tags", [each.key])
+  memory         = lookup(each.value, "memory", 2048)
+  cores          = lookup(each.value, "cores", 2)
+  disk_size      = lookup(each.value, "disk_size", 10)
+  network_bridge = lookup(each.value, "network_bridge", var.network_bridge)
+  mac_address    = lookup(each.value, "mac_address", null)
+  ip_config      = lookup(each.value, "ip_config", { ipv4_address = "dhcp", gateway = "" })
+  datastore_id   = lookup(each.value, "datastore_id", var.default_datastore)
+  packages       = lookup(each.value, "packages", [])
+  custom_scripts = lookup(each.value, "custom_scripts", [])
+  start_on_boot  = lookup(each.value, "start_on_boot", false)
+  agent_timeout  = lookup(each.value, "agent_timeout", "5m") # Reduced timeout to 5 minutes
 
-# #   # Network configuration
-# #   network_device {
-# #     bridge = "vmbr0"
-# #     model  = "virtio"
-# #   }
-
-# #   boot_order = ["scsi0"]
-
-# #   provisioner "local-exec" {
-# #     command = <<EOT
-# #       echo "Waiting for VM to be fully ready..."
-      
-# #       # Wait for SSH to be available and cloud-init to complete
-# #       timeout 300 bash -c '
-# #         while ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
-# #           -i ${var.ssh_private_key_path} \
-# #           ${var.ci_username}@${split("/", var.ci_ip_address)[0]} \
-# #           "cloud-init status --wait" 2>/dev/null; do
-# #           echo "Waiting for cloud-init to complete..."
-# #           sleep 10
-# #         done
-# #       '
-      
-# #       echo "VM is ready, running Ansible..."
-# #       ansible-playbook \
-# #         -i inventory.ini \
-# #         -u ${var.ci_username} \
-# #         --private-key=${var.ssh_private_key_path} \
-# #         ./playbooks/basic.yml
-# #     EOT
-# #   }
-# # }
-
-# resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
-#   vm_id     = 501
-#   name      = "test-ubuntu"
-#   node_name = "pve"
-
-#   agent {
-#     enabled = true
-#   }
-
-#   cpu {
-#     cores = 2
-#   }
-
-#   memory {
-#     dedicated = 2048
-#   }
-
-#   disk {
-#     datastore_id = "local-lvm"
-#     file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
-#     interface    = "virtio0"
-#     iothread     = true
-#     discard      = "on"
-#     size         = 4
-#   }
-
-#   initialization {
-#     ip_config {
-#       ipv4 {
-#         address = "192.168.6.170/22"
-#         gateway = "192.168.4.1"
-#       }
-#     }
-#     user_account {
-#       username = var.ci_username
-#       password = var.ci_password
-#       keys     = [local.ci_ssh_keys]
-#     }
-#     user_data_file_id = proxmox_virtual_environment_file.user_data_cloud_config.id
-#   }
-
-#   network_device {
-#     bridge = "vmbr0"
-#     # model  = "virtio"
-#   }
-
-#     provisioner "local-exec" {
-#     command = <<EOT
-      
-#       ansible-playbook \
-#         -i inventory.ini \
-#         ./playbooks/basic.yml
-#     EOT
-#   }
-
-# }
+  # Password generation and Vault storage (enable by default for VMs)
+  admin_user              = lookup(each.value, "admin_user", "admin")
+  generate_admin_password = lookup(each.value, "generate_admin_password", true)
+  vault_kv_path           = lookup(each.value, "vault_kv_path", "vm/passwords/${each.key}")
+  ansible_playbook_path   = "../ansible"
+}
 
 
-# # output "vm_ipv4_address" {
-# #   value = proxmox_virtual_environment_vm.ubuntu_vm.ipv4_addresses[1][0]
-# # }

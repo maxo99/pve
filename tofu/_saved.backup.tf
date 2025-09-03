@@ -1,31 +1,9 @@
-
-# resource "random_password" "ubuntu_container_password" {
-#   length           = 16
-#   override_special = "_%@"
-#   special          = true
-# }
-
 # resource "tls_private_key" "ubuntu_container_key" {
 #   algorithm = "RSA"
 #   rsa_bits  = 2048
 # }
 
-#   initialization {
-#     hostname = "terraform-provider-proxmox-ubuntu-container"
 
-#     ip_config {
-#       ipv4 {
-#         address = "dhcp"
-#       }
-#     }
-
-#     user_account {
-#       keys = [
-#         trimspace(tls_private_key.ubuntu_container_key.public_key_openssh)
-#       ]
-#       password = random_password.ubuntu_container_password.result
-#     }
-#   }
 
 # # # Run basic configuration - SSH is pre-installed in template
 # # resource "ansible_playbook" "configure_docker_lxc_basic" {
@@ -42,6 +20,9 @@
 # # }
 
 
+
+
+
 # # # Install Docker after basic configuration
 # # resource "ansible_playbook" "configure_docker_lxc_docker" {
 # #   playbook   = "playbooks/docker.yml"
@@ -55,6 +36,7 @@
 
 # #   depends_on = [ansible_playbook.configure_docker_lxc_basic]
 # # }
+
 
 # # # Configure SSH on the Docker LXC container using Ansible
 # # resource "ansible_host" "docker_lxc" {
@@ -137,6 +119,8 @@
 # }
 
 
+
+
 # # Create a Proxmox LXC hook script file
 # resource "proxmox_virtual_environment_file" "lxc_hook_script" {
 #   content_type = "snippets"
@@ -162,73 +146,3 @@
 # }
 
 
-
-# resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
-#   content_type = "snippets"
-#   datastore_id = "local"
-#   node_name    = "pve"
-
-#   source_raw {
-#     data = <<-EOF
-#     #cloud-config
-#     hostname: test-ubuntu
-#     users:
-#       - default
-#       - name: ${var.ci_username}
-#         password: ${var.ci_password}
-#         groups:
-#           - sudo
-#         shell: /bin/bash
-#         ssh_authorized_keys:
-#           - ${local.ssh_public_key}
-#         sudo: ALL=(ALL) NOPASSWD:ALL
-#     runcmd:
-#         - apt update
-#         - apt install -y qemu-guest-agent net-tools
-#         - timedatectl set-timezone America/New_York
-#         - systemctl enable qemu-guest-agent
-#         - systemctl start qemu-guest-agent
-#         - echo 'export PS1="[\u@\h \W \$(date +%T)]\\$ "' >> /etc/bash.bashrc
-#         - echo "done" > /tmp/cloud-config.done
-#     EOF
-
-#     file_name = "user-data-cloud-config.yaml"
-#   }
-# }
-
-
-# resource "proxmox_virtual_environment_file" "cloud_init" {
-#   #  for_each          = var.VM_CONFIG
-#    node_name     = "pve"
-#    content_type  = "snippets"
-#    datastore_id   = "snippets"
-
-#   #  source_raw {
-#   #     data = templatefile("${path.module}/cloud-init-template.yaml", {
-#   #        ENVIRONMENT = each.value.ENVIRONMENT
-#   #     })
-#   #     file_name = "/snippets/snippets/${each.value.ENVIRONMENT}-init.yaml"
-#   #  }
-# }
-# locals {
-#   ci_ssh_keys = trimspace(file("~/.ssh/pve/root.pub"))
-#   ssh_public_key = data.local_file.ci_public_key.content
-#   ssh_private_key = data.local_file.ci_private_key.content
-
-
-#   # Scanning JSON configuration files for VMs and LXCs
-#   # vm_files = fileset("${path.module}/config/vms/", "*.json")
-#   lxc_files = fileset("${path.module}/config/lxcs/", "*.json")
-  
-#   # # Load JSON files and convert them to configuration maps
-#   # vm_configs = {
-#   #   for file in local.vm_files :
-#   #     trimsuffix(basename(file), ".json") => jsondecode(file("${path.module}/config/vms/${file}"))
-#   # }
-  
-#   lxc_configs = {
-#     for file in local.lxc_files :
-#       trimsuffix(basename(file), ".json") => jsondecode(file("${path.module}/config/lxcs/${file}"))
-#   }
-
-# }

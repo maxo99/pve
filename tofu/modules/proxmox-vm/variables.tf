@@ -13,14 +13,8 @@ variable "vm_id" {
   type        = number
 }
 
-variable "template_id" {
-  description = "ID of the template to use for the VM (mutually exclusive with cloud_image_id)"
-  type        = number
-  default     = null
-}
-
 variable "cloud_image_id" {
-  description = "ID of the cloud image to use for the VM (mutually exclusive with template_id)"
+  description = "ID of the cloud image to use for the VM"
   type        = string
   default     = null
 }
@@ -52,7 +46,7 @@ variable "network_model" {
 variable "mac_address" {
   description = "Custom MAC address for the VM"
   type        = string
-  default     = null  # If null, it will be generated automatically
+  default     = null # If null, it will be generated automatically
 }
 
 variable "ip_config" {
@@ -84,11 +78,12 @@ variable "ssh_public_key" {
   type        = string
 }
 
-variable "base_cloud_init" {
-  description = "Base cloud-init configuration common to all VMs"
-  type        = string
-  default     = ""  # If empty, the module's default template will be used  
-}
+# === LEGACY VARIABLE (COMMENTED FOR REFERENCE) ===
+# variable "base_cloud_init" {
+#   description = "Base cloud-init configuration common to all VMs"
+#   type        = string
+#   default     = ""  # If empty, the module's default template will be used  
+# }
 
 variable "memory" {
   description = "Dedicated RAM memory in MB"
@@ -111,7 +106,7 @@ variable "cpu_type" {
 variable "disk_size" {
   description = "Disk size in GB"
   type        = number
-  default     = 20
+  default     = 5
 }
 
 variable "disk_iothread" {
@@ -135,7 +130,7 @@ variable "tags" {
 variable "agent_timeout" {
   description = "Timeout for waiting for the QEMU agent to become available"
   type        = string
-  default     = "15m"
+  default     = "5m"
 }
 
 variable "start_on_boot" {
@@ -147,12 +142,43 @@ variable "start_on_boot" {
 variable "ssh_private_key" {
   description = "SSH private key for provisioning"
   type        = string
-  default     = ""  # Default empty to make it optional
+  default     = "" # Default empty to make it optional
   sensitive   = true
 }
 
 variable "default_user" {
-  description = "Default user for the container"
+  description = "Default user for the VM"
   type        = string
-  default     = "ubuntu"
+  default     = "admin"
+}
+
+variable "generate_admin_password" {
+  description = "Whether to generate and store an admin password in Vault"
+  type        = bool
+  default     = false
+}
+
+variable "admin_user" {
+  description = "Name of the admin user to create"
+  type        = string
+  default     = "admin"
+}
+
+variable "vault_kv_path" {
+  description = "Vault KV path to store the generated password"
+  type        = string
+  default     = ""
+}
+
+variable "ansible_playbook_path" {
+  description = "Path to the Ansible playbook for storing secrets"
+  type        = string
+  default     = "../ansible"
+}
+
+variable "default_admin_password" {
+  description = "Default admin password if not generating one"
+  type        = string
+  default     = "changeMe123"
+  sensitive   = true
 }

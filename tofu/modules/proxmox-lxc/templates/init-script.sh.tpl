@@ -60,7 +60,13 @@ fi
 # Run custom scripts inside container
 %{ for script in custom_scripts ~}
 echo "Running custom script inside container: ${script}"
+# Replace password placeholders with actual password if applicable
+%{ if generated_password != "" ~}
+script_with_password=$(echo "${script}" | sed 's/PASSWORD_PLACEHOLDER/${generated_password}/g')
+lxc_exec bash -c "$script_with_password"
+%{ else ~}
 lxc_exec bash -c "${script}"
+%{ endif ~}
 %{ endfor ~}
 
 # Ensure SSH service is enabled and running inside container

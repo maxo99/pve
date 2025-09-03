@@ -9,4 +9,12 @@
         // "**/*.venv": true,
         "**/*.ruff_cache": true,
     },
+      // Use your preferred integrated profile name (list from Terminal > Select Default Profile)
+  "terminal.integrated.defaultProfile.linux": "bash",
+
+  // Ensure automated tasks/debug use the integrated terminal
+  "terminal.integrated.automationShell.linux": "/usr/bin/bash",
+
+  // Help ensure shell integration features are enabled
+  "terminal.integrated.shellIntegration.enabled": true
 }

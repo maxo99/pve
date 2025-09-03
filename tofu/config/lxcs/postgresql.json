@@ -16,6 +16,9 @@
     "feature_nesting": true,
     "unprivileged": true,
     "start_at_boot": true,
+    "generate_admin_password": true,
+    "admin_user": "postgres",
+    "vault_kv_path": "lxc/passwords/postgresql",
     "packages": [
       "postgresql",
       "postgresql-contrib",
@@ -26,7 +29,7 @@
       "systemctl start postgresql",
       "systemctl enable postgresql",
       "# Set postgres user password",
-      "sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'postgres123';\"",
+      "sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'PASSWORD_PLACEHOLDER';\"",
       "# Configure PostgreSQL to accept connections",
       "echo \"listen_addresses = '*'\" >> /etc/postgresql/14/main/postgresql.conf",
       "echo \"host all all 0.0.0.0/0 md5\" >> /etc/postgresql/14/main/pg_hba.conf",

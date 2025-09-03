@@ -1,9 +1,13 @@
 # HashiCorp Vault
 
+## TODO
+
+- Incorporate [Ephemeral Secrets](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/ephemeral-resources/kv_secret_v2)
+
 ## SSH
+
 - Setup SSH <https://www.hashicorp.com/en/blog/managing-ssh-access-at-scale-with-hashicorp-vault>
 - <https://medium.com/ankercloud-engineering/a-quick-guide-to-set-up-hashicorp-vaults-ssh-secrets-engine-dce3b916bfae>
-
 
 ## Installation setup
 <!-- - Used installation steps from: [Raspberry Pi installation](https://techfrontier.me.uk/post/vault-on-a-pi/)

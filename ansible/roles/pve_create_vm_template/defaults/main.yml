@@ -1,0 +1,33 @@
+# vmid: 52007
+# ubuntu_version: jammy
+# template_name: ubuntu-jammy-cloud-master
+# cloud_user: admin
+# # cloud_password: "{{ lookup('community.hashi_vault.hashi_vault', 'terraform/data/login/admin:password') }}"
+# cloud_password: password
+# ssh_key: "{{ lookup('community.hashi_vault.hashi_vault', 'terraform/data/ssh_keys/ansible_management:public_key') }}"
+# disk_size: 5G
+# memory: 2048
+# cores: 2
+# bios: ovmf
+# os_type: l26
+# agent_enable: "enabled=1,fstrim_cloned_disks=1"
+# net_bridge: vmbr0
+# tag: template
+# disk_storage: local-lvm
+# disk_options: "discard=on,ssd=1"
+# create_efidisk: true
+# efidisk_size: "4M"
+# efidisk_type: "4m"
+# scsihw: "virtio-scsi-pci"
+# boot_order: "order=scsi0"
+# local_lang: en_US.UTF-8
+# set_x11: yes
+# x11_layout: us
+# x11_model: pc105
+# tz: America/New_York
+# zfs: false
+# work_dir: /tmp
+# virt_pkgs: qemu-guest-agent,cloud-utils,cloud-guest-utils
+# extra_virt_pkgs: ""
+# notes: |
+#   apt-get clean && apt -y autoremove --purge && apt -y clean && apt -y autoclean && cloud-init clean && echo -n > /etc/machine-id && echo -n > /var/lib/dbus/machine-id && sync && history -c && history -w && fstrim -av && shutdown now

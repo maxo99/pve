@@ -30,6 +30,30 @@ variable "template_id" {
   default     = null
 }
 
+variable "generate_admin_password" {
+  description = "Whether to generate and store an admin password in Vault"
+  type        = bool
+  default     = false
+}
+
+variable "admin_user" {
+  description = "Name of the admin user to create"
+  type        = string
+  default     = "admin"
+}
+
+variable "vault_kv_path" {
+  description = "Vault KV path to store the generated password"
+  type        = string
+  default     = ""
+}
+
+variable "ansible_playbook_path" {
+  description = "Path to the Ansible playbook for storing secrets"
+  type        = string
+  default     = "../ansible"
+}
+
 variable "ostemplate_url" {
   description = "URL of the OS template to download if not already present"
   type        = string
@@ -154,11 +178,11 @@ variable "cores" {
   default     = 1
 }
 
-variable "cpu_units" {
-  description = "CPU units (1-10000)"
-  type        = number
-  default     = 1024
-}
+# variable "cpu_units" {
+#   description = "CPU units (1-10000)"
+#   type        = number
+#   default     = 1024
+# }
 
 variable "cpu_architecture" {
   description = "CPU architecture (x86_64, aarch64)"

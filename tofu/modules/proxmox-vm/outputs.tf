@@ -11,6 +11,7 @@ output "vm_name" {
 output "ip_address" {
   description = "Indirizzo IP assegnato alla VM (se disponibile)"
   value       = proxmox_virtual_environment_vm.vm.ipv4_addresses
+  # value       = proxmox_virtual_environment_vm.vm.ipv4_addresses[1][0]
 }
 
 output "mac_address" {

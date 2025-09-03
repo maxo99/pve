@@ -1,17 +1,78 @@
 ## Justfile for Terraform/OpenTofu Operations
 
 set dotenv-load
-# set positional-arguments
 
 ROOT_SSH := "ssh pve-01"
+TF_LOG_PATH := "./.tflog/tf-debug.log"
+# TF_LOG_PATH := "./.tflog/tf-debug-`date +%Y%m%d-%H%M%S`.log"
+TF_LOG_LEVEL := "DEBUG"
 
+# DATE := env('DATE', shell('date +%F'))
 
 default:
     just --list
+#     echo "{{ datetime() }}"
 
+# Fast operations with aggressive timeouts
+plan-fast:
+    HTTPPROXY_TIMEOUT=30 TF_HTTP_CLIENT_TIMEOUT=30 TF_PARALLELISM=1 tofu plan
 
-# apply-auto:
-#     tofu apply -auto-approve
+apply-fast:
+    HTTPPROXY_TIMEOUT=30 TF_HTTP_CLIENT_TIMEOUT=30 TF_PARALLELISM=1 tofu apply
+
+# Regular operations (may hang on refresh)
+plan:
+    tofu plan
+
+apply:
+    tofu apply
+
+# Emergency timeout operations
+refresh-timeout:
+    timeout 60 tofu refresh || echo "Refresh timed out after 60 seconds"
+
+plan-timeout:
+    timeout 120 tofu plan || echo "Plan timed out after 2 minutes"
+
+# Emergency cleanup for hanging resources
+emergency-cleanup:
+    #!/usr/bin/env bash
+    echo "🚨 Emergency cleanup of problematic OpenTofu state..."
+    
+    echo "1. Removing deposed objects..."
+    tofu state list | grep "deposed" | while read resource; do
+        echo "  Removing: $resource"
+        tofu state rm "$resource" || true
+    done
+    
+    echo "2. Force unlocking state if locked..."
+    tofu force-unlock -force || true
+    
+    echo "3. Cleaning temporary files..."
+    rm -f .terraform/terraform.tfstate*
+    rm -f terraform.tfstate.backup.*.tmp
+    
+    echo "✅ Emergency cleanup completed"
+
+# Quick status check without hanging operations
+status-check:
+    #!/usr/bin/env bash
+    echo "📊 OpenTofu Status Check (no refresh)"
+    echo "State resources:"
+    tofu state list | wc -l
+    echo ""
+    echo "Configuration validation:"
+    tofu validate
+    echo ""
+    echo "Provider status:"
+    timeout 10 tofu providers || echo "Provider check timed out"
+
+# Targeted apply for specific resource types
+apply-files-only:
+    TF_PARALLELISM=1 tofu apply -target='proxmox_virtual_environment_file.lxc_hook_script' -target='module.lxcs.proxmox_virtual_environment_file.cloud_init_snippet'
+
+apply-passwords-only:
+    TF_PARALLELISM=1 tofu apply -target='module.lxcs.random_password.admin_password' -target='module.lxcs.null_resource.store_password_in_vault'
 
 
 
@@ -19,10 +80,30 @@ tf-plan-lxc name:
     tofu plan -target='module.lxcs["{{name}}"]'
 
 tf-apply-lxc name:
-    tofu apply -target='module.lxcs["{{name}}"]' -auto-approve
+    tofu apply -target='module.lxcs["{{name}}"]'
 
 tf-destroy-lxc name:
-    tofu destroy -target='module.lxcs["{{name}}"]' -auto-approve
+    tofu destroy -target='module.lxcs["{{name}}"]'
+
+# Test the official cloud-init approach after recreating VM
+vm-test-official-cloudinit:
+    #!/usr/bin/env bash
+    echo "=== Testing Official Cloud-Init Approach ==="
+    
+    echo "1. Destroying current VM..."
+    just vm-destroy webserver
+    
+    echo "2. Recreating VM with official user_data_file_id approach..."
+    just vm-create webserver
+    
+    echo "3. Waiting for VM to be ready..."
+    sleep 30
+    
+    echo "4. Checking cloud-init status..."
+    just vm-cloudinit-check webserver
+    
+    echo "5. Checking if custom config is applied..."
+    ssh pve-01 "qm cloudinit dump 1005 user" | head -20
 
 show:
     tofu show
@@ -77,48 +158,21 @@ pve-lxc-ips:
 lxc-test-ssh:
     #!/bin/bash
     echo "=== Testing SSH Access to Containers ==="
-    # Get vm_deployment private key from Vault
-    VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
-    VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
-    
-    if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
-        echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
-        exit 1
-    fi
-    
-    # Get private key from Vault
-    curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/data/ssh_keys/vm_deployment" | \
-        jq -r '.data.data.private_key' > /tmp/vm_deployment_key
-    chmod 600 /tmp/vm_deployment_key
-    
-    # Iterate centralized `just _get-lxcs` output and test SSH on each
-    while IFS=$'\t' read -r key id name; do
-        if [ -n "$id" ] && [ "$id" != "null" ]; then
-            echo "Testing $name (ID: $id)..."
-            ip=$(ssh pve-01 "pct exec $id -- ip addr show eth0 | grep 'inet ' | head -1 | awk '{print \$2}' | cut -d'/' -f1" 2>/dev/null)
-            if [ -n "$ip" ]; then
-                echo "  IP: $ip"
-                timeout 10 ssh -i /tmp/vm_deployment_key -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@$ip "echo '  SSH: ✅ Success (root)'" 2>/dev/null && continue
-                timeout 10 ssh -i /tmp/vm_deployment_key -o ConnectTimeout=5 -o StrictHostKeyChecking=no admin@$ip "echo '  SSH: ✅ Success (admin)'" 2>/dev/null || echo "  SSH: ❌ Failed"
-            else
-                echo "  No IP found"
-            fi
-        fi
-    done < <(just _get-lxcs)
-    rm -f /tmp/vm_deployment_key
+    ./scripts/ssh-test.sh test-lxc-batch
 
-validate:
+
+tf-validate:
     tofu validate
     @echo "=== Checking JSON configuration files ==="
     @find config/ -name "*.json" -exec echo "Checking {}" \; -exec jq empty {} \;
 
-fmt:
+tf-fmt:
     tofu fmt -recursive
 
-init:
+tf-init:
     tofu init -upgrade
 
-clean:
+tf-clean:
     rm -rf .terraform/
     rm -f terraform.tfstate.backup
     rm -f .terraform.lock.hcl
@@ -230,6 +284,319 @@ lxc-debug-ssh name:
     done
 
 
+vm-debug-ssh name:
+    #!/bin/bash
+    echo "=== SSH Debug for VM: {{name}} ==="
+    
+    # Get VM details using script
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+    
+    if [ -z "$VM_ID" ]; then
+        echo "❌ VM '{{name}}' not found"
+        exit 1
+    fi
+    
+    echo "🔍 VM: {{name}} (ID: $VM_ID)"
+    echo "🌐 IP Address: ${VM_IP:-Not available}"
+    
+    # Check VM status
+    echo -e "\n📊 VM Status:"
+    ./scripts/pve-ssh.sh "qm status $VM_ID"
+    
+    # Check QEMU Guest Agent
+    echo -e "\n🤖 QEMU Guest Agent Status:"
+    ./scripts/guest-agent.sh status "$VM_ID"
+    
+    # Check if we can get network info from guest agent
+    echo -e "\n🌐 Network Info from Guest Agent:"
+    ./scripts/guest-agent.sh network-info "$VM_ID"
+    
+    # Test SSH connection if IP is available
+    if [ -n "$VM_IP" ]; then
+        echo -e "\n🧪 Testing SSH Connections:"
+        ./scripts/ssh-test.sh test-connection "$VM_IP"
+        
+        # Test cloud-init status via SSH
+        echo -e "\n☁️  Cloud-init Status (via SSH):"
+        ./scripts/cloud-init.sh status "$VM_IP"
+    else
+        echo -e "\n⏭️  SSH tests skipped (no IP available)"
+    fi
+
+# Test SSH to VM with specific IP (when auto-detection fails)
+vm-ssh-test name ip:
+    #!/bin/bash
+    echo "=== SSH Test for VM: {{name}} at {{ip}} ==="
+    
+    # Get VM details using script
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    
+    if [ -z "$VM_ID" ]; then
+        echo "❌ VM '{{name}}' not found"
+        exit 1
+    fi
+    
+    echo "🔍 VM: {{name}} (ID: $VM_ID) at IP: {{ip}}"
+    
+    # Test SSH connection
+    echo -e "\n🧪 Testing SSH Connections:"
+    ./scripts/ssh-test.sh test-connection "{{ip}}"
+    
+    # Test cloud-init and guest agent status via SSH
+    echo -e "\n☁️  Detailed Status Check (via SSH):"
+    ./scripts/cloud-init.sh status "{{ip}}"
+
+# Get VM IP addresses (if guest agent is working)
+vm-get-ip name:
+    #!/bin/bash
+    echo "=== Getting IP for VM: {{name}} ==="
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    if [ -z "$VM_ID" ]; then
+        echo "❌ VM '{{name}}' not found"
+        exit 1
+    fi
+    ./scripts/guest-agent.sh network-info "$VM_ID" | jq -r '.[] | select(.name != "lo") | .["ip-addresses"][]? | select(.["ip-address-type"] == "ipv4") | .["ip-address"]' 2>/dev/null || echo "❌ Guest agent not available or no IP found"
+
+# Test VM with password authentication (for debugging)
+vm-password-test name ip password:
+    #!/bin/bash
+    echo "=== Password Auth Test for VM: {{name}} at {{ip}} ==="
+    ./scripts/ssh-test.sh test-password "{{ip}}" "ubuntu" "{{password}}"
+    ./scripts/ssh-test.sh test-password "{{ip}}" "root" "{{password}}"
+
+# Quick cloud-init check (no waiting)
+vm-cloudinit-check name:
+    #!/usr/bin/env bash
+    echo "=== Quick Cloud-init Check for VM: {{name}} ==="
+    VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+    if [ -z "$VM_IP" ]; then
+        echo "❌ Could not get IP for VM {{name}}"
+        exit 1
+    fi
+    echo "VM IP: $VM_IP"
+    ./scripts/cloud-init.sh status "$VM_IP"
+
+# Validate VM configuration for invalid characters
+vm-validate-config name:
+    #!/usr/bin/env bash
+    echo "=== Validating VM Configuration for Invalid Characters: {{name}} ==="
+    ./scripts/cloud-init.sh validate-config "{{name}}"
+
+# Fix VM cloud-init configuration manually
+vm-fix-cloudinit name:
+    #!/usr/bin/env bash
+    echo "=== Fixing Cloud-init Configuration for VM: {{name}} ==="
+    ./scripts/cloud-init.sh fix-config "{{name}}"
+
+# VM Management and Debugging Recipes
+vm-create name:
+    #!/usr/bin/env bash
+    echo "=== Creating VM: {{name}} ==="
+    TF_LOG="${TF_LOG_LEVEL}" TF_LOG_PATH="${TF_LOG_PATH}" tofu apply -target="module.vms[\"{{name}}\"]" -auto-approve
+
+    if [ $? -eq 0 ]; then
+        echo "✅ VM creation completed successfully"
+        echo ""
+        echo "🔍 Checking VM status and cloud-init..."
+        
+        # Get VM details using script
+        VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+        VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+        
+        if [ -n "$VM_ID" ]; then
+            echo "📋 VM ID: $VM_ID"
+            
+            # Wait a moment for VM to start
+            echo "⏱️ Waiting 10 seconds for VM to initialize..."
+            sleep 10
+            
+            # Check VM status
+            echo "📊 VM Status:"
+            ./scripts/pve-ssh.sh "qm status $VM_ID"
+            
+            # Check guest agent (may take time to start)
+            echo ""
+            echo "🤖 Guest Agent Status:"
+            ./scripts/guest-agent.sh status "$VM_ID"
+            
+            # Get IP address if agent is working
+            if [ -n "$VM_IP" ]; then
+                echo ""
+                echo "🌐 Network Information:"
+                echo "  📍 IP Address: $VM_IP"
+            else
+                echo ""
+                echo "🌐 Network Information:"
+                echo "  ⏳ No IP assigned yet"
+            fi
+            
+            # Check cloud-init status
+            echo ""
+            echo "☁️ Cloud-init Status:"
+            if [ -n "$VM_IP" ]; then
+                ./scripts/cloud-init.sh status "$VM_IP"
+            else
+                echo "  ⏳ Cannot check cloud-init status (no IP yet)"
+            fi
+            
+            echo ""
+            echo "💡 Next steps:"
+            echo "  - Run 'just vm-cloudinit-check {{name}}' for detailed cloud-init verification"
+            echo "  - Run 'just vm-debug-ssh {{name}}' to test SSH connections once ready"
+            echo "  - Check guest agent status: 'just vm-status {{name}}'"
+        else
+            echo "❌ Could not get VM ID from Terraform output"
+        fi
+    else
+        echo "❌ VM creation failed"
+        exit 1
+    fi
+
+vm-destroy name:
+    #!/usr/bin/env bash
+    echo "=== Destroying VM: {{name}} ==="
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    if [ -n "$VM_ID" ]; then
+        echo "🛑 Stopping VM $VM_ID via Proxmox..."
+        ./scripts/pve-ssh.sh "qm stop $VM_ID" || true
+        echo "🗑️ Destroying VM $VM_ID via Proxmox..."
+        ./scripts/pve-ssh.sh "qm destroy $VM_ID --purge" || true
+    fi
+    echo "🧹 Removing from Terraform state..."
+    tofu destroy -target="module.vms[\"{{name}}\"]" -auto-approve
+
+# Complete cleanup for VM - handles prevent_destroy lifecycle rules
+vm-cleanup name:
+    #!/usr/bin/env bash
+    echo "=== Complete VM Cleanup: {{name}} ==="
+    
+    # Get VM ID first
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    
+    if [ -n "$VM_ID" ]; then
+        echo "🛑 Stopping VM $VM_ID via Proxmox..."
+        ./scripts/pve-ssh.sh "qm stop $VM_ID" || true
+        echo "🗑️ Destroying VM $VM_ID via Proxmox..."
+        ./scripts/pve-ssh.sh "qm destroy $VM_ID --purge" || true
+    fi
+    
+    echo "🧹 Removing VM resource from Terraform state..."
+    tofu destroy -target="module.vms[\"{{name}}\"].proxmox_virtual_environment_vm.vm" -auto-approve || true
+    
+    echo "🗂️ Removing user data file from Terraform state..."
+    tofu destroy -target="module.vms[\"{{name}}\"].proxmox_virtual_environment_file.user_data" -auto-approve || true
+    
+    echo "🔑 Removing password resource (bypassing prevent_destroy)..."
+    tofu state rm "module.vms[\"{{name}}\"].random_password.admin_password[0]" 2>/dev/null || true
+    tofu state rm "module.vms[\"{{name}}\"].null_resource.store_password_in_vault[0]" 2>/dev/null || true
+    
+    echo "✅ Complete cleanup finished for {{name}}"
+
+# Recreate VM with automatic cleanup and creation
+vm-recreate name:
+    #!/usr/bin/env bash
+    echo "=== Recreating VM: {{name}} with cleanup ==="
+    
+    echo "🧹 Step 1: Complete cleanup..."
+    just vm-cleanup {{name}}
+    
+    echo "⏱️ Step 2: Waiting 5 seconds for cleanup to settle..."
+    sleep 5
+    
+    echo "🚀 Step 3: Creating VM with enhanced status checking..."
+    just vm-create {{name}}
+
+vm-status name: 
+    #!/usr/bin/env bash
+    echo "=== VM Status: {{name}} ==="
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    if [ -z "$VM_ID" ]; then
+        echo "❌ VM not found in Terraform state"
+        exit 1
+    fi
+    
+    echo "🔍 VM: {{name}} (ID: $VM_ID)"
+    echo "📋 Proxmox VM Status:"
+    ./scripts/pve-ssh.sh "qm status $VM_ID" || echo "❌ VM not found in Proxmox"
+    
+    echo -e "\n🌐 Network Information:"
+    ./scripts/guest-agent.sh network-info "$VM_ID"
+
+vm-cloud-init-status name:
+    #!/usr/bin/env bash
+    echo "=== Cloud-init Status for VM: {{name}} ==="
+    VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+    if [ -z "$VM_IP" ]; then
+        echo "❌ Could not get IP for VM {{name}}"
+        exit 1
+    fi
+    ./scripts/cloud-init.sh status "$VM_IP"
+
+vm-cloud-init-full name:
+    #!/usr/bin/env bash
+    echo "=== Full Cloud-init Configuration for VM: {{name}} ==="
+    ./scripts/cloud-init.sh show-config "{{name}}"
+
+vm-cloud-init-logs name:
+    #!/usr/bin/env bash
+    echo "=== Comprehensive Cloud-init Logs for VM: {{name}} ==="
+    VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+    if [ -z "$VM_IP" ]; then
+        echo "❌ Could not get IP for VM {{name}}"
+        exit 1
+    fi
+    ./scripts/cloud-init.sh logs "$VM_IP"
+
+# Monitor cloud-init operations in real-time
+vm-monitor-cloudinit name:
+    #!/usr/bin/env bash
+    echo "=== Real-time Cloud-init Monitoring for VM: {{name}} ==="
+    ./scripts/cloud-init.sh monitor "{{name}}"
+
+# View cloud-init merge operation logs - where custom config is applied over Proxmox defaults
+vm-cloud-init-merge-logs name:
+    #!/usr/bin/env bash
+    echo "=== Cloud-init Merge Operation Logs for VM: {{name}} ==="
+    VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+    if [ -z "$VM_IP" ]; then
+        echo "❌ Could not get IP for VM {{name}}"
+        exit 1
+    fi
+    ./scripts/cloud-init.sh merge-logs "$VM_IP"
+
+vm-guest-agent-debug name:
+    #!/usr/bin/env bash
+    echo "=== Guest Agent Debug for VM: {{name}} ==="
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    if [ -z "$VM_ID" ]; then
+        echo "❌ VM not found"
+        exit 1
+    fi
+    ./scripts/guest-agent.sh debug "$VM_ID"
+
+# Cancel current apply and recreate VM with fixed config
+vm-recreate-with-fix name:
+    #!/bin/bash
+    echo "=== Recreating VM {{name}} with fixed configuration ==="
+    
+    # Get VM ID
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    if [ -z "$VM_ID" ]; then
+        echo "❌ VM '{{name}}' not found"
+        exit 1
+    fi
+    
+    echo "🛑 Stopping any running apply operations..."
+    pkill -f "tofu apply" || true
+    
+    echo "🗑️  Destroying current VM..."
+    tofu destroy -target='module.vms["{{name}}"]' -auto-approve
+    
+    echo "🔧 Applying with fixed cloud-init configuration..."
+    tofu apply -target='module.vms["{{name}}"]' -auto-approve
+
+
 
 tf-emergency-cleanup:
     #!/bin/bash
@@ -244,7 +611,16 @@ tf-emergency-cleanup:
     fi
 
 tf-debug args:
-    TF_LOG=DEBUG TF_LOG_PATH=./terraform-debug.log tofu {{args}}
+    TF_LOG=DEBUG TF_LOG_PATH="./.tflog/tf-debug.log" tofu {{args}}
+
+
+tfad:
+    TF_LOG=DEBUG TF_LOG_PATH="./.tflog/tf-debug.log" tofu apply --auto-approve
+
+
+tfdd:
+    TF_LOG=DEBUG TF_LOG_PATH="./.tflog/tf-debug.log" tofu destroy --auto-approve
+
 
 tf-plan-debug:
     just tf-debug plan
@@ -307,3 +683,13 @@ tf-pve-vm-check-status vm_id:
     
 #     echo "✅ SSH keys reinstalled. Testing connection..."
 #     just debug-ssh {{name}}
+#
+
+pve-logs-plain:
+    ssh pve-01 'sudo tail -n 200 -F /var/log/syslog /var/log/pve/tasks/*'
+
+pve-logs-sys:
+    ssh pve-01 'sudo journalctl -f -u pveproxy -u pvedaemon'
+
+pve-logs-multi:
+    ssh pve-01 'sudo tail -F /var/log/syslog /var/log/pve/tasks/*' | multitail -

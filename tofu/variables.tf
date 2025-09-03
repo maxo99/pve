@@ -51,7 +51,7 @@ variable "default_datastore" {
 variable "ci_username" {
   description = "Cloud-Init username"
   type        = string
-  default     = "root"
+  default     = "admin"
 }
 variable "ci_password" {
   description = "Cloud-Init password"
@@ -148,8 +148,14 @@ variable "vault_retry" {
   default     = 3
 }
 
-variable "default_lxc_template" {
-  description = "Default LXC template for container creation"
+# variable "default_lxc_template" {
+#   description = "Default LXC template for container creation"
+#   type        = string
+#   default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+# }
+
+variable "virtual_environment_token" {
   type        = string
-  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+  description = "The token for the Proxmox Virtual Environment API"
 }
+

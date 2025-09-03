@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "opentofu init",
+            "type": "shell",
+            "command": "opentofu init",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "tofu apply",
+            "type": "shell",
+            "command": "bash -lc 'TF_LOG=info TF_LOG_PATH=tofu/.tflogs/tf-$(date +%Y%m%d-%H%M%S).log tofu apply      ",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
