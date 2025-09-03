@@ -16,7 +16,7 @@
     "feature_nesting": true,
     "unprivileged": true,
     "start_at_boot": true,
-    "generate_admin_password": true,
+    "generate_admin_password": false,
     "admin_user": "postgres",
     "vault_kv_path": "lxc/passwords/postgresql",
     "packages": [

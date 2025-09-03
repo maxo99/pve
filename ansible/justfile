@@ -42,7 +42,7 @@ copy-ssh-key-to-proxmox_tprov:
 # copy-ssh-key-to-proxmox_root:
 #     @echo "Copying SSH key to Proxmox host ${PVE_01} for root user..."
 #     scp ~/.ssh/homelab/root.pub root@${PVE_01}:/tmp/root.pub
-#     ssh root@${PVE_01} << EOF
+#     ssh pve-01 << EOF
 #     echo "Creating .ssh directory for root user..."
 #     mkdir -p /home/root/.ssh
 #     echo "Appending public key to authorized_keys..."

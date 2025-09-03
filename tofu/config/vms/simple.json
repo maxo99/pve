@@ -1,9 +1,9 @@
 {
-    "vm_name": "standard-app",
+    "vm_name": "simple-vm",
     "vm_id": 1008,
     "node_name": "pve-01",
-    "description": "standard description",
-    "tags": ["app"],
+    "description": "simple VM deployment",
+    "tags": ["vm","simple"],
     "memory": 2048,
     "cores": 2,
     "disk_size": 4,
@@ -19,6 +19,6 @@
     "packages": [
     ],
     "custom_scripts": [
-      "echo 'VM updated with jq package' > /tmp/vm-update-test.log"
+      "echo 'Success!' > /tmp/vm-update-test.log"
     ]
   }

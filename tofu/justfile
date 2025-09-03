@@ -3,37 +3,24 @@
 set dotenv-load
 
 ROOT_SSH := "ssh pve-01"
-TF_LOG_PATH := "./.tflog/tf-debug.log"
-# TF_LOG_PATH := "./.tflog/tf-debug-`date +%Y%m%d-%H%M%S`.log"
+# TF_LOG_PATH := "./.tflog/tf-debug.log"
+DATE_TIME := "$(date +%Y-%m-%d-%H%M%S)"
 TF_LOG_LEVEL := "DEBUG"
+TF_LOG_PATH := "./.tflog/tf-debug-" + DATE_TIME + ".log"
 
 # DATE := env('DATE', shell('date +%F'))
-
+#
 default:
     just --list
+
+test:
+    echo "{{ TF_LOG_PATH }}"
+    echo "{{ DATE_TIME }}"
 #     echo "{{ datetime() }}"
-
-# Fast operations with aggressive timeouts
-plan-fast:
-    HTTPPROXY_TIMEOUT=30 TF_HTTP_CLIENT_TIMEOUT=30 TF_PARALLELISM=1 tofu plan
-
-apply-fast:
-    HTTPPROXY_TIMEOUT=30 TF_HTTP_CLIENT_TIMEOUT=30 TF_PARALLELISM=1 tofu apply
-
-# Regular operations (may hang on refresh)
-plan:
-    tofu plan
-
-apply:
-    tofu apply
-
-# Emergency timeout operations
-refresh-timeout:
-    timeout 60 tofu refresh || echo "Refresh timed out after 60 seconds"
-
-plan-timeout:
-    timeout 120 tofu plan || echo "Plan timed out after 2 minutes"
-
+#
+#
+#
+#                                                                     
 # Emergency cleanup for hanging resources
 emergency-cleanup:
     #!/usr/bin/env bash
@@ -54,6 +41,7 @@ emergency-cleanup:
     
     echo "✅ Emergency cleanup completed"
 
+#
 # Quick status check without hanging operations
 status-check:
     #!/usr/bin/env bash
@@ -67,6 +55,7 @@ status-check:
     echo "Provider status:"
     timeout 10 tofu providers || echo "Provider check timed out"
 
+#
 # Targeted apply for specific resource types
 apply-files-only:
     TF_PARALLELISM=1 tofu apply -target='proxmox_virtual_environment_file.lxc_hook_script' -target='module.lxcs.proxmox_virtual_environment_file.cloud_init_snippet'
@@ -114,6 +103,7 @@ list:
 output:
     tofu output
 
+#
 # Prints a tab-separated list: KEY\tID\tNAME — easy to filter with grep/awk/cut.
 _get-lxcs:
     #!/bin/bash
@@ -324,6 +314,7 @@ vm-debug-ssh name:
         echo -e "\n⏭️  SSH tests skipped (no IP available)"
     fi
 
+#
 # Test SSH to VM with specific IP (when auto-detection fails)
 vm-ssh-test name ip:
     #!/bin/bash
@@ -347,6 +338,7 @@ vm-ssh-test name ip:
     echo -e "\n☁️  Detailed Status Check (via SSH):"
     ./scripts/cloud-init.sh status "{{ip}}"
 
+#
 # Get VM IP addresses (if guest agent is working)
 vm-get-ip name:
     #!/bin/bash
@@ -358,6 +350,7 @@ vm-get-ip name:
     fi
     ./scripts/guest-agent.sh network-info "$VM_ID" | jq -r '.[] | select(.name != "lo") | .["ip-addresses"][]? | select(.["ip-address-type"] == "ipv4") | .["ip-address"]' 2>/dev/null || echo "❌ Guest agent not available or no IP found"
 
+#
 # Test VM with password authentication (for debugging)
 vm-password-test name ip password:
     #!/bin/bash
@@ -365,6 +358,7 @@ vm-password-test name ip password:
     ./scripts/ssh-test.sh test-password "{{ip}}" "ubuntu" "{{password}}"
     ./scripts/ssh-test.sh test-password "{{ip}}" "root" "{{password}}"
 
+#
 # Quick cloud-init check (no waiting)
 vm-cloudinit-check name:
     #!/usr/bin/env bash
@@ -377,18 +371,21 @@ vm-cloudinit-check name:
     echo "VM IP: $VM_IP"
     ./scripts/cloud-init.sh status "$VM_IP"
 
+#
 # Validate VM configuration for invalid characters
 vm-validate-config name:
     #!/usr/bin/env bash
     echo "=== Validating VM Configuration for Invalid Characters: {{name}} ==="
     ./scripts/cloud-init.sh validate-config "{{name}}"
 
+#
 # Fix VM cloud-init configuration manually
 vm-fix-cloudinit name:
     #!/usr/bin/env bash
     echo "=== Fixing Cloud-init Configuration for VM: {{name}} ==="
     ./scripts/cloud-init.sh fix-config "{{name}}"
 
+#
 # VM Management and Debugging Recipes
 vm-create name:
     #!/usr/bin/env bash
@@ -452,7 +449,8 @@ vm-create name:
         echo "❌ VM creation failed"
         exit 1
     fi
-
+#
+#
 vm-destroy name:
     #!/usr/bin/env bash
     echo "=== Destroying VM: {{name}} ==="
@@ -466,6 +464,7 @@ vm-destroy name:
     echo "🧹 Removing from Terraform state..."
     tofu destroy -target="module.vms[\"{{name}}\"]" -auto-approve
 
+#
 # Complete cleanup for VM - handles prevent_destroy lifecycle rules
 vm-cleanup name:
     #!/usr/bin/env bash
@@ -493,6 +492,7 @@ vm-cleanup name:
     
     echo "✅ Complete cleanup finished for {{name}}"
 
+#
 # Recreate VM with automatic cleanup and creation
 vm-recreate name:
     #!/usr/bin/env bash
@@ -575,7 +575,8 @@ vm-guest-agent-debug name:
     fi
     ./scripts/guest-agent.sh debug "$VM_ID"
 
-# Cancel current apply and recreate VM with fixed config
+#
+## Cancel current apply and recreate VM with fixed config
 vm-recreate-with-fix name:
     #!/bin/bash
     echo "=== Recreating VM {{name}} with fixed configuration ==="
@@ -609,13 +610,19 @@ tf-emergency-cleanup:
     else
         echo "Cancelled"
     fi
-
-tf-debug args:
-    TF_LOG=DEBUG TF_LOG_PATH="./.tflog/tf-debug.log" tofu {{args}}
+#
+#
+#
+#
+##
+#
+tf-debug *args:
+    TF_LOG={{ TF_LOG_LEVEL}} TF_LOG_PATH={{ TF_LOG_PATH }} tofu {{args}}
+#     TF_LOG=DEBUG TF_LOG_PATH="{{ TF_LOG_PATH }}" tofu {{args}}
 
 
 tfad:
-    TF_LOG=DEBUG TF_LOG_PATH="./.tflog/tf-debug.log" tofu apply --auto-approve
+    just tf-debug apply --auto-approve
 
 
 tfdd:
@@ -693,3 +700,6 @@ pve-logs-sys:
 
 pve-logs-multi:
     ssh pve-01 'sudo tail -F /var/log/syslog /var/log/pve/tasks/*' | multitail -
+
+# vzdump:
+#     ssh pve-01 'sudo vzdump --all --mode snapshot'
