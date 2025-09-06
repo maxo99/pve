@@ -35,6 +35,11 @@ variable "generate_admin_password" {
   type        = bool
   default     = false
 }
+variable "default_password" {
+  description = "Default password for the container"
+  type        = string
+  default     = "P@ssw0rd"
+}
 
 variable "admin_user" {
   description = "Name of the admin user to create"
@@ -63,7 +68,7 @@ variable "ostemplate_url" {
 variable "default_user" {
   description = "ID of the datastore where to save the container"
   type        = string
-  default     = "ubuntu"
+  default     = "admin"
 }
 
 variable "datastore_id" {
@@ -147,12 +152,6 @@ variable "ssh_private_key" {
   sensitive   = true
 }
 
-variable "root_password" {
-  description = "Password for the root user (optional)"
-  type        = string
-  default     = null
-  sensitive   = true
-}
 
 variable "base_cloud_init" {
   description = "Base cloud-init configuration for the container"

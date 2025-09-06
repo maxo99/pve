@@ -18,14 +18,6 @@ terraform {
   }
 }
 
-provider "vault" {
-  address = var.vault_addr
-  token   = var.vault_token
-
-  skip_tls_verify = true
-  max_retries     = var.vault_retry
-}
-
 
 provider "proxmox" {
   endpoint = var.proxmox_api_url
@@ -36,7 +28,7 @@ provider "proxmox" {
   ssh {
     agent    = true
     username = "root"
-    #   private_key = module.vault_secrets.ssh_private_key
+    private_key = module.vault_secrets.ssh_private_key
   }
 }
 
@@ -52,5 +44,15 @@ provider "proxmox" {
   ssh {
     agent    = true
     username = "root"
+    private_key = module.vault_secrets.ssh_private_key
   }
+}
+
+
+provider "vault" {
+  address = var.vault_addr
+  token   = var.vault_token
+
+  skip_tls_verify = true
+  max_retries     = var.vault_retry
 }

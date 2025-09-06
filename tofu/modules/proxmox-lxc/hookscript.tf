@@ -9,7 +9,7 @@ locals {
     hostname            = var.container_name
     packages            = join(" ", var.packages)
     custom_scripts      = var.custom_scripts
-    generated_password  = var.generate_admin_password ? try(random_password.admin_password[0].result, "") : ""
+    generated_password  = var.generate_admin_password ? try(random_password.admin_password[0].result, "") : var.default_password
   })
 
   hook_file_name = "${var.container_id}-${var.container_name}-hook.sh"

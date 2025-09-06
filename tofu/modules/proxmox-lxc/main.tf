@@ -12,7 +12,7 @@ resource "proxmox_virtual_environment_container" "lxc" {
 
   operating_system {
     template_file_id = var.template_id != null ? var.template_id : var.ostemplate_url
-    type             = "ubuntu" # or the appropriate type
+    type             = "ubuntu"
   }
 
 
@@ -55,7 +55,7 @@ resource "proxmox_virtual_environment_container" "lxc" {
         var.ansible_ssh_public_key,
         var.proxmox_ssh_public_key
       ]
-      password = var.root_password
+      password = var.default_password
     }
   }
 

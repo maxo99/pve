@@ -16,7 +16,7 @@ fi
 CT_PATH="/var/lib/lxc/$VMID/rootfs"
 
 # Wait for container to be fully started
-sleep 5
+sleep 20
 
 # Function to execute commands inside the container
 lxc_exec() {
@@ -27,12 +27,16 @@ lxc_exec() {
 write_to_container() {
     local file_path="$1"
     local content="$2"
-    # Ensure directory exists
-    mkdir -p "$(dirname "$CT_PATH$file_path")"
-    echo "$content" > "$CT_PATH$file_path"
+    # Write the file inside the container to avoid host<->container overlay/race issues.
+    # Using lxc-attach ensures the container sees the file right away.
+    lxc-attach -n "$VMID" -- /bin/bash -c "mkdir -p \"\$(dirname \"$file_path\")\" && cat > \"$file_path\" <<'EOF'
+$${content}
+EOF"
 }
 
 echo "Starting LXC container initialization for ${hostname} (ID: $VMID)"
+
+
 
 # Update the system and install base packages inside container
 lxc_exec apt-get update -y
@@ -41,21 +45,32 @@ lxc_exec apt-get upgrade -y
 # Install required packages inside container
 lxc_exec apt-get install -y openssh-server sudo ${packages}
 
-# SSH keys are handled by Proxmox initialization - no manual SSH setup needed
 
 # Create the ${default_user} user if it does not already exist inside container
 if ! lxc_exec id ${default_user} &>/dev/null; then
   lxc_exec useradd -m -s /bin/bash ${default_user}
   write_to_container "/etc/sudoers.d/${default_user}" "${default_user} ALL=(ALL) NOPASSWD:ALL"
+  # Ensure the file exists inside the container before setting perms
+  if ! lxc_exec test -f /etc/sudoers.d/${default_user}; then
+      echo "ERROR: sudoers file was not created inside container" >&2
+      exit 1
+  fi
   lxc_exec chmod 440 /etc/sudoers.d/${default_user}
   
   # Configure SSH for the user inside container
   lxc_exec mkdir -p /home/${default_user}/.ssh
   write_to_container "/home/${default_user}/.ssh/authorized_keys" "${ssh_pub_key}"
+  # Ensure authorized_keys exists before adjusting perms/ownership
+  if ! lxc_exec test -f /home/${default_user}/.ssh/authorized_keys; then
+      echo "ERROR: authorized_keys was not created inside container" >&2
+      exit 1
+  fi
   lxc_exec chmod 700 /home/${default_user}/.ssh
   lxc_exec chmod 600 /home/${default_user}/.ssh/authorized_keys
   lxc_exec chown -R ${default_user}:${default_user} /home/${default_user}/.ssh
 fi
+
+
 
 # Run custom scripts inside container
 %{ for script in custom_scripts ~}
@@ -63,15 +78,17 @@ echo "Running custom script inside container: ${script}"
 # Replace password placeholders with actual password if applicable
 %{ if generated_password != "" ~}
 script_with_password=$(echo "${script}" | sed 's/PASSWORD_PLACEHOLDER/${generated_password}/g')
-lxc_exec bash -c "$script_with_password"
+lxc_exec bash -lc "$script_with_password"
 %{ else ~}
-lxc_exec bash -c "${script}"
+lxc_exec bash -lc "${script}"
 %{ endif ~}
 %{ endfor ~}
+
+
 
 # Ensure SSH service is enabled and running inside container
 lxc_exec systemctl enable ssh
 lxc_exec systemctl start ssh
-
-echo "LXC container initialization completed successfully for ${hostname}!"
+echo "LXC container initialization completed successfully for ${hostname} (ID: $VMID)"
+echo "Success" > /tmp/lxc-$VMID-init.log
 exit 0

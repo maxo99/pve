@@ -31,7 +31,7 @@ module "lxcs" {
   ssh_private_key         = local.ssh_private_key
   ostemplate_url          = proxmox_virtual_environment_download_file.ubuntu_container_template.id
   snippets_datastore_id   = var.snippets_datastore_id
-  default_user            = var.default_user
+  default_user            = lookup(each.value, "default_user", var.default_user)
   proxmox_host_ip         = var.proxmox_host_ip
   ssh_private_key_path    = var.ssh_private_key_path
   

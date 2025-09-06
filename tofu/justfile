@@ -1,6 +1,6 @@
 ## Justfile for Terraform/OpenTofu Operations
 
-set dotenv-load
+set dotenv-load := true
 
 ROOT_SSH := "ssh pve-01"
 # TF_LOG_PATH := "./.tflog/tf-debug.log"
@@ -56,10 +56,6 @@ status-check:
     timeout 10 tofu providers || echo "Provider check timed out"
 
 #
-# Targeted apply for specific resource types
-apply-files-only:
-    TF_PARALLELISM=1 tofu apply -target='proxmox_virtual_environment_file.lxc_hook_script' -target='module.lxcs.proxmox_virtual_environment_file.cloud_init_snippet'
-
 apply-passwords-only:
     TF_PARALLELISM=1 tofu apply -target='module.lxcs.random_password.admin_password' -target='module.lxcs.null_resource.store_password_in_vault'
 
@@ -134,7 +130,7 @@ for-each-lxc:
         fi
     done
 
-pve-lxc-ips:
+pve-get-lxc-ips:
     #!/bin/bash
     echo "=== LXC Container IP Addresses ==="
     # Iterate centralized `just _get-lxcs` output (KEY<TAB>ID<TAB>NAME)
@@ -184,7 +180,7 @@ vault-debug:
     echo -e "\n=== Available API Credentials ==="
     curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/metadata/api_credentials/?list=true" | jq -r '.data.keys[]'
 
-pve-debug-containers:
+pve-lxc-check:
     #!/bin/bash
     echo "=== Container Status on PVE ==="
     ssh pve-01 "pct list"
@@ -538,6 +534,8 @@ vm-cloud-init-full name:
     echo "=== Full Cloud-init Configuration for VM: {{name}} ==="
     ./scripts/cloud-init.sh show-config "{{name}}"
 
+#
+# Check cloud-init logs for VM
 vm-cloud-init-logs name:
     #!/usr/bin/env bash
     echo "=== Comprehensive Cloud-init Logs for VM: {{name}} ==="
@@ -618,7 +616,6 @@ tf-emergency-cleanup:
 #
 tf-debug *args:
     TF_LOG={{ TF_LOG_LEVEL}} TF_LOG_PATH={{ TF_LOG_PATH }} tofu {{args}}
-#     TF_LOG=DEBUG TF_LOG_PATH="{{ TF_LOG_PATH }}" tofu {{args}}
 
 
 tfad:
@@ -633,12 +630,14 @@ tf-plan-debug:
     just tf-debug plan
 
 
-
+#
+# Check VM guest agent
 tf-pve-vm-check-guest-agent vm_id:
     @echo "Checking QEMU Guest Agent status..."
     ssh pve-01 "qm agent {{vm_id}} ping" || echo "Guest agent not responding"
     ssh pve-01 "qm config {{vm_id}} | grep agent" || echo "No agent config found"
-
+#
+# Check VM status and config
 tf-pve-vm-check-status vm_id:
     ssh pve-01 "qm status {{vm_id}}"
     ssh pve-01 "qm config {{vm_id}}"
@@ -646,60 +645,17 @@ tf-pve-vm-check-status vm_id:
 
 
 
-# generate-simple-password:
-#   openssl rand -base64 32 | tr -d "=+/" | cut -c1-16
-# Fix SSH keys for a specific container (emergency repair)
-# fix-ssh name:
-#     #!/bin/bash
-#     echo "=== SSH Key Emergency Fix for: {{name}} ==="
-#     VAULT_TOKEN="${VAULT_TOKEN:-$(grep VAULT_TOKEN .env 2>/dev/null | cut -d'=' -f2)}"
-#     VAULT_ADDR="${VAULT_ADDR:-$(grep VAULT_ADDR .env 2>/dev/null | cut -d'=' -f2)}"
-    
-#     if [ -z "$VAULT_TOKEN" ] || [ -z "$VAULT_ADDR" ]; then
-#         echo "Error: VAULT_TOKEN and VAULT_ADDR must be set"
-#         exit 1
-#     fi
-    
-#     # Get container details
-#     id=$(tofu output -json lxcs | jq -r '.["{{name}}"].id // empty')
-#     if [ -z "$id" ]; then
-#         echo "❌ Container '{{name}}' not found"
-#         exit 1
-#     fi
-    
-#     echo "🔧 Fixing SSH keys for container ID: $id"
-    
-#     # Backup existing keys
-#     echo "💾 Backing up existing authorized_keys..."
-#     ssh pve-01 "pct exec $id -- cp /root/.ssh/authorized_keys /root/.ssh/authorized_keys.backup 2>/dev/null || echo 'No existing keys to backup'"
-    
-#     # Get all SSH keys from Vault and reinstall them
-#     echo "🔑 Reinstalling SSH keys from Vault..."
-#     rm -f /tmp/all_ssh_keys
-#     for key_type in vm_deployment ansible_management proxmox_host; do
-#         echo "Adding $key_type key..."
-#         curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/data/ssh_keys/$key_type" | \
-#             jq -r '.data.data.public_key' >> /tmp/all_ssh_keys
-#     done
-    
-#     # Install keys to container
-#     ssh pve-01 "pct exec $id -- mkdir -p /root/.ssh && pct exec $id -- chmod 700 /root/.ssh"
-#     scp /tmp/all_ssh_keys pve-01:/tmp/new_keys
-#     ssh pve-01 "cat /tmp/new_keys | pct exec $id -- tee /root/.ssh/authorized_keys > /dev/null && pct exec $id -- chmod 600 /root/.ssh/authorized_keys && rm /tmp/new_keys"
-#     rm -f /tmp/all_ssh_keys
-    
-#     echo "✅ SSH keys reinstalled. Testing connection..."
-#     just debug-ssh {{name}}
 #
-
 pve-logs-plain:
     ssh pve-01 'sudo tail -n 200 -F /var/log/syslog /var/log/pve/tasks/*'
-
+#
+#
 pve-logs-sys:
     ssh pve-01 'sudo journalctl -f -u pveproxy -u pvedaemon'
-
+#
 pve-logs-multi:
     ssh pve-01 'sudo tail -F /var/log/syslog /var/log/pve/tasks/*' | multitail -
-
-# vzdump:
-#     ssh pve-01 'sudo vzdump --all --mode snapshot'
+#
+#
+pve-logs-lxc name:
+    ssh pve-01 "journalctl --since '1 hour ago' | grep -E '({{ name }}|useradd)' | head -10"
