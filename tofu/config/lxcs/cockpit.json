@@ -29,22 +29,22 @@
     {
       "host_path": "/mnt/proxmox-shared",
       "container_path": "/mnt/shared",
-      "options": "bind,create=dir"
+      "options": "bind"
     },
     {
       "host_path": "/mnt/proxmox-personal",
       "container_path": "/mnt/personal",
-      "options": "bind,create=dir"
+      "options": "bind"
     },
     {
       "host_path": "/mnt/proxmox-snapshots",
       "container_path": "/mnt/snapshots",
-      "options": "bind,create=dir,ro"
+      "options": "bind,ro"
     },
     {
       "host_path": "/tank",
       "container_path": "/mnt/tank",
-      "options": "bind,create=dir"
+      "options": "bind"
     }
   ],
   "packages": [

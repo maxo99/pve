@@ -236,3 +236,13 @@ variable "feature_nesting" {
   type        = bool
   default     = false
 }
+
+variable "mount_points" {
+  description = "List of mount points to bind from host to container"
+  type = list(object({
+    host_path      = string
+    container_path = string
+    options        = string  # Comma-separated options like "bind,ro" - will be parsed into individual parameters
+  }))
+  default = []
+}

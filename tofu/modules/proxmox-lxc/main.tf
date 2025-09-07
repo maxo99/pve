@@ -65,4 +65,16 @@ resource "proxmox_virtual_environment_container" "lxc" {
     nesting = var.feature_nesting
   }
 
+  # Mount points configuration
+  dynamic "mount_point" {
+    for_each = var.mount_points
+    content {
+      path      = mount_point.value.container_path
+      volume    = mount_point.value.host_path
+      read_only = contains(split(",", mount_point.value.options), "ro")
+      backup    = contains(split(",", mount_point.value.options), "backup")
+      quota     = contains(split(",", mount_point.value.options), "quota")
+    }
+  }
+
 }

@@ -16,6 +16,7 @@ locals {
     packages               = join(" ", var.packages)
     custom_script_contents = local.custom_script_contents
     generated_password     = var.generate_admin_password ? try(random_password.admin_password[0].result, "") : var.default_password
+    mount_points           = var.mount_points
   })
 
   hook_file_name = "${var.container_id}-${var.container_name}-hook.sh"

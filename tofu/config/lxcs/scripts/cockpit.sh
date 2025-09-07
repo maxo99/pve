@@ -122,16 +122,8 @@ systemctl start smbd nmbd winbind
 # Configure Cockpit to listen on all interfaces
 mkdir -p /etc/cockpit/ws-certs.d
 
-
-# Create mount point directories
-mkdir -p /mnt/shared /mnt/personal /mnt/snapshots /mnt/tank
-echo 'Storage mount points created'
-
-
-# Configure storage permissions for cockpit user access
-chown -R root:disk /mnt/shared /mnt/personal /mnt/tank || true
-chmod -R 755 /mnt/shared /mnt/personal /mnt/tank || true
-echo 'Storage permissions configured'
+# Note: Mount point directories are now created by the common init script template
+# based on the mount_points configuration in the JSON file
 
 
 # Restart Cockpit to apply all changes

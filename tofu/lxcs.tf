@@ -53,6 +53,7 @@ module "lxcs" {
   packages          = lookup(each.value, "packages", [])
   custom_scripts    = lookup(each.value, "custom_scripts", [])
   start_on_boot     = lookup(each.value, "start_on_boot", false)
+  mount_points      = lookup(each.value, "mount_points", [])
   
   # Password generation and Vault storage (optional)
   generate_admin_password = lookup(each.value, "generate_admin_password", false)

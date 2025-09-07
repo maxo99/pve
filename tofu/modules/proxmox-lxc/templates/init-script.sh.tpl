@@ -36,6 +36,25 @@ EOF"
 
 echo "Starting LXC container initialization for ${hostname} (ID: $VMID)"
 
+# Ensure host-side mount point directories exist and have appropriate permissions
+%{ for mount_point in mount_points ~}
+echo "Ensuring host directory exists: ${mount_point.host_path}"
+mkdir -p "${mount_point.host_path}"
+
+# Set appropriate permissions on host side for mount points
+%{ if can(regex("/(shared|personal)", mount_point.container_path)) ~}
+# For shared/personal storage, allow broader access
+chown -R root:disk "${mount_point.host_path}" 2>/dev/null || echo "Warning: Could not change ownership of ${mount_point.host_path}"
+chmod -R 755 "${mount_point.host_path}" 2>/dev/null || echo "Warning: Could not change permissions of ${mount_point.host_path}"
+%{ else ~}
+# For other mount points, use more restrictive permissions  
+chown -R root:root "${mount_point.host_path}" 2>/dev/null || echo "Warning: Could not change ownership of ${mount_point.host_path}"
+chmod -R 755 "${mount_point.host_path}" 2>/dev/null || echo "Warning: Could not change permissions of ${mount_point.host_path}"
+%{ endif ~}
+%{ endfor ~}
+
+echo "Host-side mount point preparation completed"
+
 
 
 # Update the system and install base packages inside container
@@ -69,6 +88,15 @@ if ! lxc_exec id ${default_user} &>/dev/null; then
   lxc_exec chmod 600 /home/${default_user}/.ssh/authorized_keys
   lxc_exec chown -R ${default_user}:${default_user} /home/${default_user}/.ssh
 fi
+
+# Create and configure mount point directories
+%{ for mount_point in mount_points ~}
+echo "Creating mount point directory: ${mount_point.container_path}"
+lxc_exec mkdir -p "${mount_point.container_path}"
+%{ endfor ~}
+%{ if length(mount_points) > 0 ~}
+echo "Mount point directories created (permissions inherited from host)"
+%{ endif ~}
 
 
 
