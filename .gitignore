@@ -2,7 +2,7 @@ doc/_tmp.md
 **/*.env
 **/.terraform
 **/.terraform.lock.hcl
-
+.tmp
 
 /logs/*
 

@@ -1,8 +1,6 @@
-pve-compare-templates:
-    ssh pve-01 "qm template 100 >/dev/null 2>&1; qm template 52000 >/dev/null 2>&1; qm config 100; echo '---'; qm config 52000"
 ## Justfile
 
-set dotenv-load
+set dotenv-load := true
 
 
 

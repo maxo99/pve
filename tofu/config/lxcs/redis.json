@@ -13,17 +13,5 @@
     "redis-server",
     "redis-tools"
   ],
-  "custom_scripts": [
-    "# Configure Redis",
-    "sed -i 's/^bind 127.0.0.1 ::1\\$/bind 0.0.0.0/' /etc/redis/redis.conf",
-    "sed -i 's/^# requirepass foobared\\$/requirepass PASSWORD_PLACEHOLDER/' /etc/redis/redis.conf",
-    "systemctl enable redis-server",
-    "systemctl restart redis-server",
-    "# Test Redis",
-    "sleep 2",
-    "redis-cli -a 'PASSWORD_PLACEHOLDER' ping",
-    "echo \\\"Redis Cache Server installed and configured successfully!\\\"",
-    "echo \\\"Access: redis-cli -h \\$(hostname -I | awk '{print \\$1}') -a 'PASSWORD_PLACEHOLDER'\\\"",
-    "systemctl status redis-server --no-pager"
-  ]
+  "custom_scripts": ["redis.sh"]
 }

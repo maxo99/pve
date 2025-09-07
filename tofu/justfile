@@ -646,7 +646,7 @@ tf-pve-vm-check-status vm_id:
 
 
 #
-pve-logs-plain:
+pve-logs-tasks:
     ssh pve-01 'sudo tail -n 200 -F /var/log/syslog /var/log/pve/tasks/*'
 #
 #
