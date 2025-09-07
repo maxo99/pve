@@ -1,6 +1,6 @@
 {
   "container_name": "cockpit-management",
-  "container_id": 210,
+  "container_id": 101,
   "node_name": "pve-01",
   "description": "Container LXC Cockpit Management Interface with File Sharing, Identities, and Navigator",
   "tags": [
@@ -15,8 +15,8 @@
   "disk_size": 8,
   "network_bridge": "vmbr0",
   "ip_config": {
-    "ipv4_address": "dhcp",
-    "gateway": ""
+    "ipv4_address": "192.168.6.101/22",
+    "gateway": "192.168.4.1"
   },
   "datastore_id": "local-lvm",
   "feature_nesting": true,
