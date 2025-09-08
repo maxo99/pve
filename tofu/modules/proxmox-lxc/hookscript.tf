@@ -17,6 +17,16 @@ locals {
     custom_script_contents = local.custom_script_contents
     generated_password     = var.generate_admin_password ? try(random_password.admin_password[0].result, "") : var.default_password
     mount_points           = var.mount_points
+    run_id                 = var.run_id
+  })
+
+  # Populate monitoring script template
+  monitor_script = templatefile("${path.module}/templates/monitor-hookscript.sh.tpl", {
+    container_name        = var.container_name
+    container_id          = var.container_id
+    run_id               = var.run_id
+    ssh_private_key_path = var.ssh_private_key_path
+    proxmox_host_ip      = var.proxmox_host_ip
   })
 
   hook_file_name = "${var.container_id}-${var.container_name}-hook.sh"

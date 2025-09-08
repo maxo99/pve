@@ -300,3 +300,45 @@
     name: zfs-monthly-scrub.timer
     enabled: yes
     state: started
+
+
+- name: Ensure ownership for mapped UID/GID on pool and dataset mountpoints
+  block:
+    - name: Get mountpoint for pool
+      ansible.builtin.command:
+        cmd: "zfs get -H -o value mountpoint {{ zfs_pool_name }}"
+      register: pool_mount
+      failed_when: false
+      changed_when: false
+
+    - name: Get mountpoint for dataset
+      ansible.builtin.command:
+        cmd: "zfs get -H -o value mountpoint {{ zfs_pool_name }}/{{ zfs_encrypted_dataset_name }}"
+      register: dataset_mount
+      failed_when: false
+      changed_when: false
+
+    - name: Set ownership on pool mountpoint (non-recursive by default)
+      ansible.builtin.file:
+        path: "{{ pool_mount.stdout }}"
+        owner: "{{ zfs_mapped_uid }}"
+        group: "{{ zfs_mapped_gid }}"
+        recurse: "{{ zfs_chown_recursive | bool }}"
+      when:
+        - zfs_chown_enable
+        - pool_mount is defined
+        - pool_mount.stdout is defined
+        - pool_mount.stdout != '-'
+
+    - name: Set ownership on dataset mountpoint (non-recursive by default)
+      ansible.builtin.file:
+        path: "{{ dataset_mount.stdout }}"
+        owner: "{{ zfs_mapped_uid }}"
+        group: "{{ zfs_mapped_gid }}"
+        recurse: "{{ zfs_chown_recursive | bool }}"
+      when:
+        - zfs_chown_enable
+        - dataset_mount is defined
+        - dataset_mount.stdout is defined
+        - dataset_mount.stdout != '-'
+  when: zpool_exists

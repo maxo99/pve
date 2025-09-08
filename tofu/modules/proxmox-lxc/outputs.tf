@@ -17,3 +17,18 @@ output "container_status" {
   description = "Current container status"
   value       = proxmox_virtual_environment_container.lxc.started ? "running" : "stopped"
 }
+
+output "run_id" {
+  description = "Unique run identifier for this deployment"
+  value       = var.run_id
+}
+
+output "status_directory" {
+  description = "Path to the status directory on Proxmox host"
+  value       = "/tmp/${var.run_id}-lxc-${var.container_id}-status"
+}
+
+output "startup_order" {
+  description = "Startup order of the container"
+  value       = proxmox_virtual_environment_container.lxc.startup[0].order
+}

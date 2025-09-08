@@ -77,4 +77,15 @@ resource "proxmox_virtual_environment_container" "lxc" {
     }
   }
 
+    startup {
+    order = var.lxc_index
+    up_delay   = "60"
+    down_delay = "60"
+  }
+
+  # Monitor hook script execution status
+  provisioner "local-exec" {
+    command = local.monitor_script
+  }
+
 }

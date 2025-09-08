@@ -210,7 +210,7 @@ variable "tags" {
 variable "start_on_boot" {
   description = "Automatically start the container on node boot"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "unprivileged" {
@@ -245,4 +245,15 @@ variable "mount_points" {
     options        = string  # Comma-separated options like "bind,ro" - will be parsed into individual parameters
   }))
   default = []
+}
+
+variable "lxc_index" {
+  description = "Index of the LXC container in a list (for internal use)"
+  type        = number
+  default     = 0
+}
+
+variable "run_id" {
+  description = "Shared run ID for this deployment"
+  type        = string
 }
