@@ -35,6 +35,14 @@ Minimal variables (defaults in `defaults/main.yml`)
 - `zfs_force_wipe` (default: true in this repo; set to false after initial run)
 - `zfs_redeploy` (default: false)
 
+Access from unprivileged LXC containers
+
+- `zfs_mapped_uid` / `zfs_mapped_gid` (defaults: 100000): when set, the role will set the owner/group of the pool and dataset mountpoints to these numeric IDs so that LXC containers using userns high-mapped ranges (common default: 100000) can access the files. Set empty to skip.
+- `zfs_chown_enable` (default: true): enable applying the ownership change.
+- `zfs_chown_recursive` (default: false): whether to recurse the ownership change into existing files — use with caution on large datasets.
+
+Note: setting these values only updates the host-side owner/group of the mountpoint. Ensure your LXC's /etc/subuid and /etc/subgid and container configuration map the same high range (typically 100000+) so UIDs inside the container align with the host numeric IDs.
+
 Run (controller)
 
 - Preferred: use the repository playbook which integrates Vault fetch/generation:

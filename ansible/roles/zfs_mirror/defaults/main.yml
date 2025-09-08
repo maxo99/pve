@@ -31,3 +31,13 @@ zfs_proxmox_nodes: []
 # If true, will force re-create pool/dataset (export/destroy then recreate)
 # Useful for initial install or reconfigure: set to true to redeploy.
 zfs_redeploy: false
+
+# Optional UID/GID to assign to the pool mountpoint so unprivileged LXC containers
+# which use high UID/GID mapping (e.g. 100000:100000) can access the files.
+# Set to an integer (e.g. 100000) or leave empty to skip ownership changes.
+zfs_mapped_uid: 100000
+zfs_mapped_gid: 100000
+# Whether to apply the ownership change and whether it should recurse into
+# the dataset. Recurse can be slow for large datasets; default is false.
+zfs_chown_enable: true
+zfs_chown_recursive: false

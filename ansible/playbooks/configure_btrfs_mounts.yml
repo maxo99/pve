@@ -1,0 +1,69 @@
+---
+- name: Ensure mapped ownership for BTRFS mountpoints
+  hosts: pve_01
+  become: true
+  vars:
+    btrfs_mapped_uid: 100000
+    btrfs_mapped_gid: 100000
+    btrfs_chown_paths:
+      - /mnt/proxmox-personal
+      - /mnt/proxmox-shared
+  tasks:
+    - name: Install chown helper script
+      ansible.builtin.copy:
+        dest: /usr/local/sbin/chown-proxmox-mounts.sh
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Ensure the listed mountpoints are owned by the mapped UID/GID.
+          UID={{ btrfs_mapped_uid }}
+          GID={{ btrfs_mapped_gid }}
+          PATHS=( {{ btrfs_chown_paths | join(' ') }} )
+
+          for p in "${PATHS[@]}"; do
+            # wait up to 10 seconds for the mount to appear
+            for i in 1 2 3 4 5; do
+              if mountpoint -q "$p"; then
+                chown -h ${UID}:${GID} "$p" || true
+                # change contents non-recursively by default; recursion is dangerous for large trees
+                # uncomment next line to recurse if desired
+                # chown -R ${UID}:${GID} "$p" || true
+                break
+              fi
+              sleep 2
+            done
+          done
+
+    - name: Install systemd unit to apply mapped ownership after local-fs
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/chown-proxmox-mounts.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Apply mapped UID/GID ownership to Proxmox mountpoints
+          After=local-fs.target
+          Wants=local-fs.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/chown-proxmox-mounts.sh
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd and enable/start chown service
+      block:
+        - name: Reload systemd
+          ansible.builtin.systemd:
+            daemon_reload: yes
+
+        - name: Enable chown-proxmox-mounts.service
+          ansible.builtin.systemd:
+            name: chown-proxmox-mounts.service
+            enabled: yes
+            state: started
