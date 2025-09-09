@@ -1,0 +1,224 @@
+vm:
+  - name: "webserver"
+lxc:
+  
+  # 101 - Cockpit Management Interface
+  - container_name: cockpit-management
+    container_id: 101
+    node_name: pve-01
+    description:
+      Container LXC Cockpit Management Interface with File Sharing, Identities,
+      and Navigator
+    tags:
+      - management
+      - cockpit
+      - monitoring
+      - network
+      - lxc
+    memory: 2048
+    cores: 2
+    disk_size: 8
+    network_bridge: vmbr0
+    ip_config:
+      ipv4_address: 192.168.6.101/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    generate_admin_password: false
+    admin_user: cockpitadmin
+    vault_kv_path: lxc/passwords/cockpit
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
+      - host_path: "/mnt/proxmox-personal"
+        container_path: "/mnt/personal"
+        options: bind
+      - host_path: "/mnt/proxmox-snapshots"
+        container_path: "/mnt/snapshots"
+        options: bind,ro
+      - host_path: "/tank"
+        container_path: "/mnt/tank"
+        options: bind
+    packages:
+      - cockpit
+      - cockpit-ws
+      - cockpit-system
+      - cockpit-networkmanager
+      - cockpit-storaged
+      - attr
+      - nfs-kernel-server
+      - samba
+      - samba-common-bin
+      - winbind
+      - jq
+      - gawk
+      - psmisc
+      - rsync
+      - zip
+      - curl
+      - wget
+    custom_scripts:
+      - cockpit.sh
+  
+  # 103 - Jellyfin Media Server
+  - container_name: jellyfin-media
+    container_id: 103
+    node_name: pve-01
+    description: Container LXC Jellyfin Media Server
+    tags:
+      - media
+      - jellyfin
+      - lxc
+    memory: 2048
+    cores: 2
+    disk_size: 8
+    network_bridge: vmbr0
+    ip_config:
+      ipv4_address: 192.168.6.103/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    generate_admin_password: false
+    admin_user: jellyfinadmin
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
+      - host_path: "/mnt/proxmox-personal"
+        container_path: "/mnt/personal"
+        options: bind
+      - host_path: "/mnt/proxmox-snapshots"
+        container_path: "/mnt/snapshots"
+        options: bind,ro
+      - host_path: "/tank"
+        container_path: "/mnt/tank"
+        options: bind
+    packages:
+      - curl
+      - gpg
+    custom_scripts:
+      - jellyfin.sh
+  
+  # 104 - InfluxDB Time-series Database
+  - container_name: influxdb
+    container_id: 104
+    node_name: pve-01
+    description: Container LXC InfluxDB Time-series Database
+    tags:
+      - database
+      - influxdb
+      - lxc
+    memory: 2048
+    cores: 2
+    disk_size: 8
+    network_bridge: vmbr0
+    ip_config:
+      ipv4_address: 192.168.6.104/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    generate_admin_password: false
+    admin_user: influxdbadmin
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
+    packages:
+      - curl
+      - gpg
+      - gnupg
+      - ca-certificates
+    custom_scripts:
+      - influxdb.sh
+  
+  # 105 - Grafana Monitoring
+  - container_name: grafana-monitoring
+    container_id: 105
+    node_name: pve-01
+    description: Container LXC Grafana Monitoring
+    tags:
+      - monitoring
+      - grafana
+      - lxc
+    memory: 512
+    cores: 1
+    disk_size: 4
+    network_bridge: vmbr0
+    ip_config:
+      ipv4_address: 192.168.6.105/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    generate_admin_password: false
+    admin_user: grafana
+    vault_kv_path: lxc/passwords/grafana
+    mount_points: []
+    packages:
+      - curl
+      - gpg
+    custom_scripts:
+      - grafana.sh
+
+  # 201 - PostgreSQL Database Server
+  - container_name: postgresql-db
+    container_id: 201
+    node_name: pve-01
+    description: Container LXC PostgreSQL Database Server
+    tags:
+      - db
+      - postgresql
+      - sql
+      - lxc
+    memory: 2048
+    cores: 2
+    disk_size: 15
+    network_bridge: vmbr0
+    ip_config:
+      ipv4_address: 192.168.6.201/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    generate_admin_password: false
+    default_user: postgres
+    vault_kv_path: lxc/passwords/postgresql
+    packages:
+      - postgresql
+      - postgresql-contrib
+      - postgresql-client
+    custom_scripts:
+      - postgresql.sh
+
+  # 202 - Redis Cache Server
+  - container_name: redis-cache
+    container_id: 202
+    description: Container LXC Redis Cache Server
+    tags:
+      - cache
+      - redis
+      - nosql
+      - lxc
+    memory: 1024
+    cores: 1
+    disk_size: 8
+    generate_admin_password: false
+    admin_user: redis
+    ip_config:
+      ipv4_address: 192.168.6.202/22
+      gateway: 192.168.4.1
+    vault_kv_path: lxc/passwords/redis
+    packages:
+      - redis-server
+      - redis-tools
+    custom_scripts:
+      - redis.sh

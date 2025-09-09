@@ -1,17 +1,26 @@
 locals {
 
-  # Scanning JSON configuration files for LXCs
-  lxc_files      = fileset("${path.module}/config/lxcs/", "*.json")
-  lxc_files_list = tolist(local.lxc_files)
+  # # Scanning JSON configuration files for LXCs
+  # lxc_files      = fileset("${path.module}/config/lxcs/", "*.json")
+  # lxc_files_list = tolist(local.lxc_files)
+
+  # lxc_configs = {
+  #   for idx, file in local.lxc_files_list :
+  #   trimsuffix(basename(file), ".json") => merge(
+  #     jsondecode(file("${path.module}/config/lxcs/${file}")),
+  #     { lxc_idx = idx + 1 }
+  #   )
+  # }
+
+  meta_config  = yamldecode(file("${path.module}/config/meta.yml"))
 
   lxc_configs = {
-    for idx, file in local.lxc_files_list :
-    trimsuffix(basename(file), ".json") => merge(
-      jsondecode(file("${path.module}/config/lxcs/${file}")),
-      { lxc_idx = idx + 1 }
-    )
+    for idx, config in local.meta_config.lxc :
+    config.container_name => merge(config, { lxc_idx = idx + 1 })
   }
+
 }
+
 
 resource "proxmox_virtual_environment_download_file" "ubuntu_container_template" {
   content_type = "vztmpl"

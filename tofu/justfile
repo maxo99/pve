@@ -70,26 +70,8 @@ tf-apply-lxc name:
 tf-destroy-lxc name:
     tofu destroy -target='module.lxcs["{{name}}"]'
 
-# Test the official cloud-init approach after recreating VM
-vm-test-official-cloudinit:
-    #!/usr/bin/env bash
-    echo "=== Testing Official Cloud-Init Approach ==="
-    
-    echo "1. Destroying current VM..."
-    just vm-destroy webserver
-    
-    echo "2. Recreating VM with official user_data_file_id approach..."
-    just vm-create webserver
-    
-    echo "3. Waiting for VM to be ready..."
-    sleep 30
-    
-    echo "4. Checking cloud-init status..."
-    just vm-cloudinit-check webserver
-    
-    echo "5. Checking if custom config is applied..."
-    ssh pve-01 "qm cloudinit dump 1005 user" | head -20
 
+#
 show:
     tofu show
 
@@ -621,9 +603,12 @@ tf-debug *args:
 tfad:
     just tf-debug apply --auto-approve
 
+tfadl name:
+    tofu apply -target='module.lxcs["{{name}}"]' --auto-approve
+
 
 tfdd:
-    TF_LOG=DEBUG TF_LOG_PATH="./.tflog/tf-debug.log" tofu destroy --auto-approve
+    just tf-debug destroy --auto-approve
 
 
 tf-plan-debug:
@@ -659,3 +644,11 @@ pve-logs-multi:
 #
 pve-logs-lxc name:
     ssh pve-01 "journalctl --since '1 hour ago' | grep -E '({{ name }}|useradd)' | head -10"
+#
+# Run PCT exec 'cmd' for LXC 'id'
+pct-exec id cmd:
+    ssh pve-01 "pct exec {{id}} -- {{cmd}}"
+#
+# Monitor processes on PVE
+pve-monitor:
+    ssh pve-01 "watch -n 1 'free -h && echo "---" && ps aux --sort=-%mem | head -10'"
