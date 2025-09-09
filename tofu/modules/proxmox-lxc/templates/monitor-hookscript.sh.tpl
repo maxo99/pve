@@ -84,10 +84,10 @@ while true; do
   # Wait before next check
   sleep 30
   
-  # Safety timeout (15 minutes)
+  # Safety timeout (30 minutes)
   ELAPSED=$(($(date +%s) - START_TIME))
-  if [ $ELAPSED -gt 900 ]; then
-    echo "Hook script monitoring timed out after 15 minutes for ${container_name}"
+  if [ $ELAPSED -gt 1800 ]; then
+    echo "Hook script monitoring timed out after 30 minutes for ${container_name}"
     echo "Last known status: $CURRENT_STAGE"
     echo "Container may still be functional. Check manually: ssh root@${proxmox_host_ip} 'ls -la $STATUS_DIR/'"
     break

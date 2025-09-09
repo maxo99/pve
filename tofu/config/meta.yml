@@ -1,7 +1,37 @@
 vm:
   - name: "webserver"
 lxc:
-  
+  # 100 - HomePage Dashboard
+  - container_name: homepage-dashboard
+    container_id: 100
+    node_name: pve-01
+    description: Container LXC Homepage Dashboard Service
+    tags:
+    - dashboard
+    - web
+    - homepage
+    - lxc
+    memory: 4096
+    cores: 2
+    disk_size: 6
+
+    ip_config:
+      ipv4_address: 192.168.6.100/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    packages:
+    - curl
+    - wget
+    - gnupg
+    - ca-certificates
+    - jq
+    - git
+    custom_scripts:
+    - homepage.sh
+
   # 101 - Cockpit Management Interface
   - container_name: cockpit-management
     container_id: 101
@@ -18,7 +48,7 @@ lxc:
     memory: 2048
     cores: 2
     disk_size: 8
-    network_bridge: vmbr0
+    dashboard: https://192.168.6.101:9090/system
     ip_config:
       ipv4_address: 192.168.6.101/22
       gateway: 192.168.4.1
@@ -62,7 +92,7 @@ lxc:
       - wget
     custom_scripts:
       - cockpit.sh
-  
+
   # 103 - Jellyfin Media Server
   - container_name: jellyfin-media
     container_id: 103
@@ -75,7 +105,7 @@ lxc:
     memory: 2048
     cores: 2
     disk_size: 8
-    network_bridge: vmbr0
+    dashboard: http://192.168.6.103:8096/
     ip_config:
       ipv4_address: 192.168.6.103/22
       gateway: 192.168.4.1
@@ -103,7 +133,7 @@ lxc:
       - gpg
     custom_scripts:
       - jellyfin.sh
-  
+
   # 104 - InfluxDB Time-series Database
   - container_name: influxdb
     container_id: 104
@@ -116,7 +146,7 @@ lxc:
     memory: 2048
     cores: 2
     disk_size: 8
-    network_bridge: vmbr0
+
     ip_config:
       ipv4_address: 192.168.6.104/22
       gateway: 192.168.4.1
@@ -137,7 +167,7 @@ lxc:
       - ca-certificates
     custom_scripts:
       - influxdb.sh
-  
+
   # 105 - Grafana Monitoring
   - container_name: grafana-monitoring
     container_id: 105
@@ -150,7 +180,7 @@ lxc:
     memory: 512
     cores: 1
     disk_size: 4
-    network_bridge: vmbr0
+    dashboard: http://192.168.6.105:3000
     ip_config:
       ipv4_address: 192.168.6.105/22
       gateway: 192.168.4.1
@@ -181,7 +211,7 @@ lxc:
     memory: 2048
     cores: 2
     disk_size: 15
-    network_bridge: vmbr0
+
     ip_config:
       ipv4_address: 192.168.6.201/22
       gateway: 192.168.4.1
@@ -222,3 +252,33 @@ lxc:
       - redis-tools
     custom_scripts:
       - redis.sh
+
+  # 203 - MongoDB Database
+  - container_name: mongodb-db
+    container_id: 203
+    node_name: pve-01
+    description: Container LXC MongoDB
+    tags:
+      - db
+      - mongodb
+      - nosql
+      - lxc
+    memory: 1024
+    cores: 1
+    disk_size: 6
+    ip_config:
+      ipv4_address: 192.168.6.203/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    feature_nesting: true
+    unprivileged: true
+    start_at_boot: true
+    packages:
+      - gnupg
+      - curl
+      - ca-certificates
+    custom_scripts:
+      - mongodb.sh
+  
+
+  
