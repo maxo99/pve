@@ -2,7 +2,7 @@ vm:
   - name: "webserver"
 lxc:
   # 100 - HomePage Dashboard
-  - container_name: homepage-dashboard
+  - container_name: homepage
     container_id: 100
     node_name: pve-01
     description: Container LXC Homepage Dashboard Service
@@ -14,7 +14,7 @@ lxc:
     memory: 4096
     cores: 2
     disk_size: 6
-
+    dashboard: http://192.168.6.100:3000/system
     ip_config:
       ipv4_address: 192.168.6.100/22
       gateway: 192.168.4.1
@@ -33,7 +33,7 @@ lxc:
     - homepage.sh
 
   # 101 - Cockpit Management Interface
-  - container_name: cockpit-management
+  - container_name: cockpit
     container_id: 101
     node_name: pve-01
     description:
@@ -94,7 +94,7 @@ lxc:
       - cockpit.sh
 
   # 103 - Jellyfin Media Server
-  - container_name: jellyfin-media
+  - container_name: jellyfin
     container_id: 103
     node_name: pve-01
     description: Container LXC Jellyfin Media Server
@@ -169,7 +169,7 @@ lxc:
       - influxdb.sh
 
   # 105 - Grafana Monitoring
-  - container_name: grafana-monitoring
+  - container_name: grafana
     container_id: 105
     node_name: pve-01
     description: Container LXC Grafana Monitoring
@@ -199,7 +199,7 @@ lxc:
       - grafana.sh
 
   # 201 - PostgreSQL Database Server
-  - container_name: postgresql-db
+  - container_name: postgresql
     container_id: 201
     node_name: pve-01
     description: Container LXC PostgreSQL Database Server
@@ -230,7 +230,7 @@ lxc:
       - postgresql.sh
 
   # 202 - Redis Cache Server
-  - container_name: redis-cache
+  - container_name: redis
     container_id: 202
     description: Container LXC Redis Cache Server
     tags:
@@ -254,7 +254,7 @@ lxc:
       - redis.sh
 
   # 203 - MongoDB Database
-  - container_name: mongodb-db
+  - container_name: mongodb
     container_id: 203
     node_name: pve-01
     description: Container LXC MongoDB
