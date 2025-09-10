@@ -5,23 +5,21 @@ lxc:
   - container_name: homepage
     container_id: 100
     node_name: pve-01
-    description: Container LXC Homepage Dashboard Service
+    description: Container LXC HomePage Dashboard Service
+    memory: 4096
+    cores: 2
+    disk_size: 6
+    dashboard: http://192.168.6.100:3000/system
+    datastore_id: local-lvm
+    feature_nesting: true
+    ip_config:
+      ipv4_address: 192.168.6.100/22
+      gateway: 192.168.4.1
     tags:
     - dashboard
     - web
     - homepage
     - lxc
-    memory: 4096
-    cores: 2
-    disk_size: 6
-    dashboard: http://192.168.6.100:3000/system
-    ip_config:
-      ipv4_address: 192.168.6.100/22
-      gateway: 192.168.4.1
-    datastore_id: local-lvm
-    feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
     packages:
     - curl
     - wget
@@ -54,11 +52,8 @@ lxc:
       gateway: 192.168.4.1
     datastore_id: local-lvm
     feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
     generate_admin_password: false
     admin_user: cockpitadmin
-    vault_kv_path: lxc/passwords/cockpit
     mount_points:
       - host_path: "/mnt/proxmox-shared"
         container_path: "/mnt/shared"
@@ -111,8 +106,6 @@ lxc:
       gateway: 192.168.4.1
     datastore_id: local-lvm
     feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
     generate_admin_password: false
     admin_user: jellyfinadmin
     mount_points:
@@ -139,23 +132,20 @@ lxc:
     container_id: 104
     node_name: pve-01
     description: Container LXC InfluxDB Time-series Database
-    tags:
-      - database
-      - influxdb
-      - lxc
+
     memory: 2048
     cores: 2
     disk_size: 8
-
     ip_config:
       ipv4_address: 192.168.6.104/22
       gateway: 192.168.4.1
     datastore_id: local-lvm
     feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
     generate_admin_password: false
-    admin_user: influxdbadmin
+    tags:
+      - database
+      - influxdb
+      - lxc
     mount_points:
       - host_path: "/mnt/proxmox-shared"
         container_path: "/mnt/shared"
@@ -173,25 +163,22 @@ lxc:
     container_id: 105
     node_name: pve-01
     description: Container LXC Grafana Monitoring
+    memory: 1024
+    cores: 2
+    disk_size: 4
+    dashboard: http://192.168.6.105:3000
+    datastore_id: local-lvm
+    feature_nesting: true
+    generate_admin_password: false
+    admin_user: grafana
+    mount_points: []
+    ip_config:
+      ipv4_address: 192.168.6.105/22
+      gateway: 192.168.4.1
     tags:
       - monitoring
       - grafana
       - lxc
-    memory: 512
-    cores: 1
-    disk_size: 4
-    dashboard: http://192.168.6.105:3000
-    ip_config:
-      ipv4_address: 192.168.6.105/22
-      gateway: 192.168.4.1
-    datastore_id: local-lvm
-    feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
-    generate_admin_password: false
-    admin_user: grafana
-    vault_kv_path: lxc/passwords/grafana
-    mount_points: []
     packages:
       - curl
       - gpg
@@ -203,25 +190,21 @@ lxc:
     container_id: 201
     node_name: pve-01
     description: Container LXC PostgreSQL Database Server
+    datastore_id: local-lvm
+    feature_nesting: true
+    generate_admin_password: false
+    default_user: postgres
+    memory: 2048
+    cores: 2
+    disk_size: 15
+    ip_config:
+      ipv4_address: 192.168.6.201/22
+      gateway: 192.168.4.1
     tags:
       - db
       - postgresql
       - sql
       - lxc
-    memory: 2048
-    cores: 2
-    disk_size: 15
-
-    ip_config:
-      ipv4_address: 192.168.6.201/22
-      gateway: 192.168.4.1
-    datastore_id: local-lvm
-    feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
-    generate_admin_password: false
-    default_user: postgres
-    vault_kv_path: lxc/passwords/postgresql
     packages:
       - postgresql
       - postgresql-contrib
@@ -246,7 +229,6 @@ lxc:
     ip_config:
       ipv4_address: 192.168.6.202/22
       gateway: 192.168.4.1
-    vault_kv_path: lxc/passwords/redis
     packages:
       - redis-server
       - redis-tools
@@ -271,8 +253,6 @@ lxc:
       gateway: 192.168.4.1
     datastore_id: local-lvm
     feature_nesting: true
-    unprivileged: true
-    start_at_boot: true
     packages:
       - gnupg
       - curl

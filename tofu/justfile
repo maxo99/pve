@@ -12,35 +12,6 @@ TF_LOG_PATH := "./.tflog/tf-debug-" + DATE_TIME + ".log"
 #
 default:
     just --list
-
-test:
-    echo "{{ TF_LOG_PATH }}"
-    echo "{{ DATE_TIME }}"
-#     echo "{{ datetime() }}"
-#
-#
-#
-#                                                                     
-# Emergency cleanup for hanging resources
-emergency-cleanup:
-    #!/usr/bin/env bash
-    echo "🚨 Emergency cleanup of problematic OpenTofu state..."
-    
-    echo "1. Removing deposed objects..."
-    tofu state list | grep "deposed" | while read resource; do
-        echo "  Removing: $resource"
-        tofu state rm "$resource" || true
-    done
-    
-    echo "2. Force unlocking state if locked..."
-    tofu force-unlock -force || true
-    
-    echo "3. Cleaning temporary files..."
-    rm -f .terraform/terraform.tfstate*
-    rm -f terraform.tfstate.backup.*.tmp
-    
-    echo "✅ Emergency cleanup completed"
-
 #
 # Quick status check without hanging operations
 status-check:
@@ -64,13 +35,6 @@ apply-passwords-only:
 tf-plan-lxc name:
     tofu plan -target='module.lxcs["{{name}}"]'
 
-tf-apply-lxc name:
-    tofu apply -target='module.lxcs["{{name}}"]'
-
-tf-destroy-lxc name:
-    tofu destroy -target='module.lxcs["{{name}}"]'
-
-
 #
 show:
     tofu show
@@ -80,6 +44,8 @@ list:
 
 output:
     tofu output
+
+
 
 #
 # Prints a tab-separated list: KEY\tID\tNAME — easy to filter with grep/awk/cut.
@@ -579,20 +545,24 @@ vm-recreate-with-fix name:
 
 
 
-tf-emergency-cleanup:
-    #!/bin/bash
-    echo "⚠️  This will destroy ALL infrastructure and clean cache files!"
-    read -p "Are you sure? (yes/no): " confirm
-    if [ "$confirm" = "yes" ]; then
-        just destroy-auto
-        just clean
-        echo "Emergency cleanup completed"
-    else
-        echo "Cancelled"
-    fi
+# tf-emergency-cleanup:
+#     #!/bin/bash
+#     echo "⚠️  This will destroy ALL infrastructure and clean cache files!"
+#     read -p "Are you sure? (yes/no): " confirm
+#     if [ "$confirm" = "yes" ]; then
+#         just destroy-auto
+#         just clean
+#         echo "Emergency cleanup completed"
+#     else
+#         echo "Cancelled"
+#     fi
 #
 #
-#
+# Recreate LXC
+tf-r-lxc name:
+    just tf-d-lxc {{name}}
+    sleep 5
+    just tf-a-lxc {{name}}
 #
 ##
 #
@@ -603,8 +573,15 @@ tf-debug *args:
 tfad:
     just tf-debug apply --auto-approve
 
-tfadl name:
+tf-a-lxc name:
     tofu apply -target='module.lxcs["{{name}}"]' --auto-approve
+
+tf-p-lxc name:
+    tofu plan -target='module.lxcs["{{name}}"]'
+
+
+tf-d-lxc name:
+    tofu destroy -target='module.lxcs["{{name}}"]' --auto-approve
 
 
 tfdd:
@@ -626,7 +603,6 @@ tf-pve-vm-check-guest-agent vm_id:
 tf-pve-vm-check-status vm_id:
     ssh pve-01 "qm status {{vm_id}}"
     ssh pve-01 "qm config {{vm_id}}"
-
 
 
 

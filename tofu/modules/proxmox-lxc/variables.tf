@@ -30,6 +30,12 @@ variable "template_id" {
   default     = null
 }
 
+variable "template_os_type" {
+  description = "Operating system type of the LXC template (e.g., ubuntu, debian)"
+  type        = string
+  default     = null
+}
+
 variable "generate_admin_password" {
   description = "Whether to generate and store an admin password in Vault"
   type        = bool
@@ -57,12 +63,6 @@ variable "ansible_playbook_path" {
   description = "Path to the Ansible playbook for storing secrets"
   type        = string
   default     = "../ansible"
-}
-
-variable "ostemplate_url" {
-  description = "URL of the OS template to download if not already present"
-  type        = string
-  default     = null
 }
 
 variable "default_user" {

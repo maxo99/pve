@@ -1,5 +1,18 @@
 
 
+resource "proxmox_virtual_environment_download_file" "ubuntu_container_template" {
+  content_type        = "vztmpl"
+  datastore_id        = "local"
+  node_name           = "pve-01"
+  url                 = "http://download.proxmox.com/images/system/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+  overwrite           = true
+  overwrite_unmanaged = true
+}
+
+locals {
+  ubuntu_template_id = proxmox_virtual_environment_download_file.ubuntu_container_template.id
+}
+
 resource "proxmox_virtual_environment_container" "lxc" {
   node_name           = var.node_name
   vm_id               = var.container_id
@@ -11,8 +24,16 @@ resource "proxmox_virtual_environment_container" "lxc" {
   hook_script_file_id = proxmox_virtual_environment_file.lxc_hook_script.id
 
   operating_system {
-    template_file_id = var.template_id != null ? var.template_id : var.ostemplate_url
-    type             = "ubuntu"
+    template_file_id = var.template_id != null ? var.template_id : local.ubuntu_template_id
+    type             = var.template_os_type != null ? var.template_os_type : "ubuntu"
+  }
+
+
+  lifecycle {
+    ignore_changes = [
+      hook_script_file_id,
+      started
+    ]
   }
 
 
@@ -77,8 +98,8 @@ resource "proxmox_virtual_environment_container" "lxc" {
     }
   }
 
-    startup {
-    order = var.lxc_index
+  startup {
+    order      = var.lxc_index
     up_delay   = "60"
     down_delay = "60"
   }

@@ -1,18 +1,6 @@
 locals {
 
-  # # Scanning JSON configuration files for LXCs
-  # lxc_files      = fileset("${path.module}/config/lxcs/", "*.json")
-  # lxc_files_list = tolist(local.lxc_files)
-
-  # lxc_configs = {
-  #   for idx, file in local.lxc_files_list :
-  #   trimsuffix(basename(file), ".json") => merge(
-  #     jsondecode(file("${path.module}/config/lxcs/${file}")),
-  #     { lxc_idx = idx + 1 }
-  #   )
-  # }
-
-  meta_config  = yamldecode(file("${path.module}/config/meta.yml"))
+  meta_config = yamldecode(file("${path.module}/config/meta.yml"))
 
   lxc_configs = {
     for idx, config in local.meta_config.lxc :
@@ -22,31 +10,21 @@ locals {
 }
 
 
-resource "proxmox_virtual_environment_download_file" "ubuntu_container_template" {
-  content_type = "vztmpl"
-  datastore_id = "local"
-  node_name    = "pve-01"
-  url          = "http://download.proxmox.com/images/system/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
-}
-
-
 # LXC creation from configuration files
 module "lxcs" {
   source = "./modules/proxmox-lxc"
   providers = {
     proxmox = proxmox.lxc
   }
-  for_each = local.lxc_configs
-  # count     = length(local.lxc_configs)
-  lxc_index = each.value.lxc_idx
   run_id    = local.run_id
+  for_each  = local.lxc_configs
+  lxc_index = each.value.lxc_idx
 
   # Common base parameters
   ssh_public_key         = local.ssh_public_key
   ansible_ssh_public_key = module.vault_secrets.ansible_ssh_public_key
   proxmox_ssh_public_key = module.vault_secrets.proxmox_ssh_public_key
   ssh_private_key        = local.ssh_private_key
-  ostemplate_url         = proxmox_virtual_environment_download_file.ubuntu_container_template.id
   snippets_datastore_id  = var.snippets_datastore_id
   default_user           = lookup(each.value, "default_user", var.default_user)
   proxmox_host_ip        = var.proxmox_host_ip

@@ -45,4 +45,12 @@ resource "proxmox_virtual_environment_file" "lxc_hook_script" {
     file_name = local.hook_file_name
   }
 
+
+  lifecycle {
+    ignore_changes = [
+      # source_raw.0.data,  # Ignore content changes
+      source_raw.0.file_name  # Ignore filename changes if using dynamic names
+    ]
+  }
+
 }
