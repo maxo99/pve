@@ -1,10 +1,10 @@
+.tmp/
 doc/_tmp.md
+
+#
 **/*.env
 **/.terraform
 **/.terraform.lock.hcl
-.tmp
-
-/logs/*
 
 # .tfstate files
 *.tfstate

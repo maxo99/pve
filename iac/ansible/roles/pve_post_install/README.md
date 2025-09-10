@@ -1,4 +1,4 @@
-# Ansible Role: pve_post_install
+<!-- # Ansible Role: pve_post_install
 
 Credits - <https://github.com/marwan-belgueddab/homelab>
 
@@ -40,4 +40,4 @@ The purpose of this Ansible role is to streamline and automate the initial confi
 
 * This role requires root privileges on the Proxmox VE nodes.
 * Internet connectivity is required for repository updates and package installations.
-* This role removes the enterprise repository, switching to the no-subscription repository. If you have a Proxmox subscription, adjust the repository configuration accordingly.
+* This role removes the enterprise repository, switching to the no-subscription repository. If you have a Proxmox subscription, adjust the repository configuration accordingly. -->
