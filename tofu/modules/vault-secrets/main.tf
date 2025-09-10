@@ -11,7 +11,7 @@ data "vault_generic_secret" "ssh_ansible_management" {
 }
 
 data "vault_generic_secret" "proxmox_api_credentials" {
-  path = var.api_credentials_path
+  path = "terraform/api_credentials/pve-01-root-tf"
 }
 
 data "vault_generic_secret" "proxmox_pam_login" {

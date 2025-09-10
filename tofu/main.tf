@@ -1,7 +1,7 @@
 # # Centralized credential retrieval
 module "vault_secrets" {
   source               = "./modules/vault-secrets"
-  api_credentials_path = var.vault_proxmox_credentials_path
+  # api_credentials_path = var.vault_proxmox_credentials_path
 }
 
 locals {

@@ -108,20 +108,12 @@ variable "install_ssh" {
   type    = bool
   default = true
 }
-variable "lxc1_ip_address" {
-  type        = string
-  description = "LXC 1 IP address"
-}
-variable "lxc2_ip_address" {
-  type        = string
-  description = "LXC 2 IP address"
-}
 
 # Vault Configuration
 variable "vault_addr" {
   description = "Vault server address"
   type        = string
-  default     = "http://vault:8200"
+  default     = "http://192.168.6.3:8200"
 }
 
 variable "vault_url" {
@@ -136,10 +128,10 @@ variable "vault_token" {
   sensitive   = true
 }
 
-variable "vault_proxmox_credentials_path" {
-  description = "Path in Vault where Proxmox credentials are stored"
-  type        = string
-}
+# variable "vault_proxmox_credentials_path" {
+#   description = "Path in Vault where Proxmox credentials are stored"
+#   type        = string
+# }
 
 
 variable "vault_retry" {
@@ -154,8 +146,8 @@ variable "vault_retry" {
 #   default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 # }
 
-variable "virtual_environment_token" {
-  type        = string
-  description = "The token for the Proxmox Virtual Environment API"
-}
+# variable "virtual_environment_token" {
+#   type        = string
+#   description = "The token for the Proxmox Virtual Environment API"
+# }
 

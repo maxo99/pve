@@ -23,7 +23,7 @@ provider "proxmox" {
   endpoint = var.proxmox_api_url
 
   insecure  = true
-  api_token = var.virtual_environment_token
+  api_token = format("%s=%s", module.vault_secrets.proxmox_api_credentials.token_id, module.vault_secrets.proxmox_api_credentials.token_secret)
 
   ssh {
     agent    = true
