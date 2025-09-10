@@ -1,0 +1,24 @@
+---
+# Homepage role main tasks
+
+- name: Include variable validation
+  ansible.builtin.include_tasks: validate.yml
+  tags: [homepage, validate]
+
+- name: Include system preparation tasks
+  ansible.builtin.include_tasks: system.yml
+  tags: [homepage, system]
+
+- name: Include configuration management tasks
+  ansible.builtin.include_tasks: config.yml
+  when: homepage_manage_config
+  tags: [homepage, config]
+
+- name: Include service management tasks
+  ansible.builtin.include_tasks: service.yml
+  tags: [homepage, service]
+
+- name: Include health check tasks
+  ansible.builtin.include_tasks: health_check.yml
+  when: homepage_health_check_enabled
+  tags: [homepage, health_check]

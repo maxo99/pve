@@ -1,0 +1,58 @@
+---
+# Homepage role default variables
+
+# Service configuration
+homepage_service_name: homepage
+homepage_user: homepage
+homepage_group: homepage
+homepage_home_dir: /home/homepage
+homepage_install_dir: /opt/homepage
+homepage_config_dir: "{{ homepage_install_dir }}/config"
+
+# Network configuration
+homepage_port: 3000
+homepage_bind_address: "0.0.0.0"
+
+# Environment configuration
+homepage_env_vars:
+  HOMEPAGE_ALLOWED_HOSTS: "localhost:{{ homepage_port }},{{ ansible_default_ipv4.address }}:{{ homepage_port }},0.0.0.0:{{ homepage_port }}"
+  HOSTNAME: "0.0.0.0"
+  PORT: "{{ homepage_port }}"
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+  HOME: "{{ homepage_home_dir }}"
+  PNPM_HOME: "{{ homepage_home_dir }}/.local/share/pnpm"
+  PATH: "{{ homepage_home_dir }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+
+# Version management
+homepage_version: "latest"  # Can be "latest" or specific version like "0.8.8"
+homepage_auto_update: false
+homepage_backup_before_update: true
+
+# Configuration management
+homepage_manage_config: true
+homepage_backup_config: true
+homepage_config_backup_dir: "{{ homepage_install_dir }}/backups"
+
+# Default configuration files
+homepage_default_configs:
+  - settings.yaml
+  - widgets.yaml
+  - services.yaml
+  - bookmarks.yaml
+  - docker.yaml
+
+# Service management
+homepage_service_enabled: true
+homepage_service_state: started
+homepage_restart_on_config_change: true
+
+# Firewall (if managing with ansible)
+homepage_manage_firewall: false
+homepage_firewall_ports:
+  - "{{ homepage_port }}/tcp"
+
+# Monitoring
+homepage_health_check_enabled: true
+homepage_health_check_url: "http://localhost:{{ homepage_port }}"
+homepage_health_check_timeout: 30

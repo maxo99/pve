@@ -1,0 +1,26 @@
+---
+# Homepage configuration playbook
+# Usage:
+#   ansible-playbook homepage.yml                    # Deploy/update all homepage config
+#   ansible-playbook homepage.yml --tags config     # Update only configuration files
+#   ansible-playbook homepage.yml --tags service    # Manage only service
+#   ansible-playbook homepage.yml --tags validate   # Run validation checks
+
+- name: Configure Homepage Dashboard
+  hosts: homepage
+  become: true
+  gather_facts: true
+  
+  roles:
+    - role: homepage
+      tags: [homepage]
+
+  post_tasks:
+    - name: Display homepage access information
+      ansible.builtin.debug:
+        msg:
+          - "Homepage has been configured successfully"
+          - "Access URL: http://{{ ansible_default_ipv4.address }}:{{ homepage_port }}"
+          - "SSH Access: ssh {{ ansible_user }}@{{ ansible_default_ipv4.address }}"
+          - "Config Directory: {{ homepage_config_dir }}"
+      tags: [homepage, info]

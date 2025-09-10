@@ -1,0 +1,32 @@
+---
+# Homepage Bookmarks - Static Configuration
+
+- Development:
+    - Github:
+        - icon: github.png
+          href: https://github.com/maxo99/pve
+          abbr: PVE
+    - Documentation:
+        - icon: readthedocs.png
+          href: https://docs.gethomepage.dev/
+          abbr: HP
+
+- Homelab:
+    - Proxmox Documentation:
+        - icon: proxmox.png
+          href: https://pve.proxmox.com/pve-docs/
+          abbr: PVE
+    - OpenTofu:
+        - icon: terraform.png
+          href: https://opentofu.org/docs/
+          abbr: TOFU
+    - Ansible:
+        - icon: ansible.png
+          href: https://docs.ansible.com/
+          abbr: ANS
+
+- Tools:
+    - Vault Documentation:
+        - icon: vault.png
+          href: https://developer.hashicorp.com/vault/docs
+          abbr: VAULT

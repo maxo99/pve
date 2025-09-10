@@ -1,0 +1,16 @@
+---
+# Homepage Docker Configuration - Static Configuration
+
+# Currently no docker services configured
+# When you add docker containers, configure them here:
+
+# Example configuration:
+# docker:
+#   my_compose:
+#     socket: /var/run/docker.sock
+#     # or for remote docker:
+#     # host: tcp://docker-host:2376
+#     # tls: true
+#     # cert: /path/to/cert.pem
+#     # key: /path/to/key.pem
+#     # ca: /path/to/ca.pem

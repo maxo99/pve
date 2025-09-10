@@ -1,0 +1,49 @@
+---
+# Configuration management tasks
+
+- name: Check if config directory exists
+  ansible.builtin.stat:
+    path: "{{ homepage_config_dir }}"
+  register: config_dir_stat
+
+- name: Create backup of existing configuration
+  ansible.builtin.copy:
+    src: "{{ homepage_config_dir }}/"
+    dest: "{{ homepage_config_backup_dir }}/{{ ansible_date_time.iso8601_basic_short }}/"
+    owner: "{{ homepage_user }}"
+    group: "{{ homepage_group }}"
+    mode: '0755'
+    remote_src: true
+  when: 
+    - homepage_backup_config
+    - config_dir_stat.stat.exists
+  notify: homepage config backed up
+
+- name: Copy homepage configuration files from static configs
+  ansible.builtin.copy:
+    src: "../../config/homepage/{{ item }}"
+    dest: "{{ homepage_config_dir }}/{{ item }}"
+    owner: "{{ homepage_user }}"
+    group: "{{ homepage_group }}"
+    mode: '0644'
+    backup: true
+  loop: "{{ homepage_default_configs }}"
+  notify: restart homepage
+  when: homepage_manage_config
+
+- name: Template homepage environment file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ homepage_install_dir }}/.env"
+    owner: "{{ homepage_user }}"
+    group: "{{ homepage_group }}"
+    mode: '0644'
+  notify: restart homepage
+
+- name: Ensure config directory permissions
+  ansible.builtin.file:
+    path: "{{ homepage_config_dir }}"
+    owner: "{{ homepage_user }}"
+    group: "{{ homepage_group }}"
+    mode: '0755'
+    recurse: true

@@ -1,0 +1,20 @@
+---
+# Homepage group variables
+
+# Override default variables for your environment
+homepage_manage_config: true
+homepage_restart_on_config_change: true
+homepage_health_check_enabled: true
+
+# Custom environment variables for this deployment
+homepage_custom_env_vars:
+  HOMEPAGE_VAR_PVE_HOST: "192.168.6.1"
+  HOMEPAGE_VAR_VAULT_HOST: "192.168.6.3"
+
+# Backup configuration
+homepage_backup_config: true
+homepage_config_backup_dir: "/opt/homepage/backups"
+
+# Service configuration specific to this instance
+homepage_bind_address: "0.0.0.0"
+homepage_port: 3000

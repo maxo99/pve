@@ -22,13 +22,13 @@ module "lxcs" {
 
   # Common base parameters
   ssh_public_key         = local.ssh_public_key
+  ssh_private_key        = local.ssh_private_key
+  ssh_private_key_path   = var.ssh_private_key_path
+  snippets_datastore_id  = var.snippets_datastore_id
   ansible_ssh_public_key = module.vault_secrets.ansible_ssh_public_key
   proxmox_ssh_public_key = module.vault_secrets.proxmox_ssh_public_key
-  ssh_private_key        = local.ssh_private_key
-  snippets_datastore_id  = var.snippets_datastore_id
   default_user           = lookup(each.value, "default_user", var.default_user)
   proxmox_host_ip        = var.proxmox_host_ip
-  ssh_private_key_path   = var.ssh_private_key_path
 
   # Specific parameters from JSON configuration
   container_name  = each.value.container_name

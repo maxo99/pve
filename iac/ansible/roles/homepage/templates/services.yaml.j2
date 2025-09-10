@@ -1,0 +1,30 @@
+---
+# Homepage services configuration
+
+# Infrastructure Services
+- Infrastructure:
+    - Proxmox:
+        icon: proxmox.png
+        href: https://{{ hostvars['pve-01']['ansible_host'] | default('pve-01') }}:8006
+        description: Proxmox VE Management
+        server: proxmox
+        container: proxmox
+
+    - Vault:
+        icon: vault.png  
+        href: http://{{ hostvars[groups['vault'][0]]['ansible_host'] | default('192.168.6.3') }}:8200
+        description: HashiCorp Vault
+        
+# Monitoring Services  
+- Monitoring:
+    - System Monitor:
+        icon: htop.png
+        href: "#"
+        description: System Resource Monitor
+        widget:
+          type: resources
+          cpu: true
+          memory: true
+          disk: /
+
+# Custom services will be added here based on deployed containers

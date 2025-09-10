@@ -1,0 +1,26 @@
+---
+# Service management tasks
+
+- name: Template homepage systemd service
+  ansible.builtin.template:
+    src: homepage.service.j2
+    dest: /etc/systemd/system/{{ homepage_service_name }}.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart homepage
+
+- name: Ensure homepage service is enabled and started
+  ansible.builtin.systemd:
+    name: "{{ homepage_service_name }}"
+    enabled: "{{ homepage_service_enabled }}"
+    state: "{{ homepage_service_state }}"
+    daemon_reload: true
+
+- name: Wait for homepage service to be ready
+  ansible.builtin.wait_for:
+    port: "{{ homepage_port }}"
+    host: "{{ homepage_bind_address }}"
+    delay: 5
+    timeout: 30
+  when: homepage_service_state == 'started'

@@ -1,0 +1,24 @@
+---
+# Homepage service handlers
+
+- name: restart homepage
+  ansible.builtin.systemd:
+    name: "{{ homepage_service_name }}"
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: reload homepage
+  ansible.builtin.systemd:
+    name: "{{ homepage_service_name }}"
+    state: reloaded
+  become: true
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: homepage config backed up
+  ansible.builtin.debug:
+    msg: "Homepage configuration backed up to {{ homepage_config_backup_dir }}"

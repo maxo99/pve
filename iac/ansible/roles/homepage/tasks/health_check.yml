@@ -1,0 +1,18 @@
+---
+# Health check tasks
+
+- name: Wait for homepage service to be available
+  ansible.builtin.uri:
+    url: "{{ homepage_health_check_url }}"
+    method: GET
+    status_code: 200
+  register: homepage_health_check
+  until: homepage_health_check is not failed
+  retries: 10
+  delay: 3
+  when: homepage_health_check_enabled
+
+- name: Display service status
+  ansible.builtin.debug:
+    msg: "Homepage service is {{ 'healthy' if homepage_health_check is not failed else 'unhealthy' }}"
+  when: homepage_health_check_enabled

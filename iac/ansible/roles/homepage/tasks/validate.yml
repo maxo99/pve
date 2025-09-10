@@ -1,0 +1,34 @@
+---
+# Variable validation tasks
+
+- name: Validate homepage_port is numeric
+  ansible.builtin.assert:
+    that:
+      - homepage_port is number
+      - homepage_port > 0
+      - homepage_port < 65536
+    msg: "homepage_port must be a valid port number (1-65535)"
+
+- name: Validate homepage_user is defined
+  ansible.builtin.assert:
+    that:
+      - homepage_user is defined
+      - homepage_user | length > 0
+    msg: "homepage_user must be defined and not empty"
+
+- name: Validate homepage directories are absolute paths
+  ansible.builtin.assert:
+    that:
+      - homepage_install_dir is match('^/')
+      - homepage_config_dir is match('^/')
+      - homepage_home_dir is match('^/')
+    msg: "All homepage directory paths must be absolute"
+
+- name: Check if homepage service exists
+  ansible.builtin.stat:
+    path: /etc/systemd/system/{{ homepage_service_name }}.service
+  register: homepage_service_file
+
+- name: Set homepage service status fact
+  ansible.builtin.set_fact:
+    homepage_service_exists: "{{ homepage_service_file.stat.exists }}"

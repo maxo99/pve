@@ -1,0 +1,31 @@
+---
+# Homepage settings configuration
+title: "{{ inventory_hostname | default('Homelab') }} Dashboard"
+
+theme: dark
+color: slate
+
+layout:
+  - Services:
+      style: row
+      columns: 4
+  - Monitoring:
+      style: row
+      columns: 3
+  - Infrastructure:
+      style: row
+      columns: 3
+
+headerStyle: clean
+hideVersion: false
+
+providers:
+  longhorn:
+    url: http://longhorn.local
+  kubernetes:
+    mode: cluster
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+  hideVisitURL: true

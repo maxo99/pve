@@ -1,0 +1,28 @@
+---
+# Homepage Widgets - Static Configuration
+
+- logo:
+    icon: https://github.com/gethomepage/homepage/raw/main/public/homepage.png
+
+- greeting:
+    text_size: xl
+    text: "Welcome to your PVE Homelab"
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: medium
+      hourCycle: h23
+
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+    cputemp: true
+    uptime: true
+
+- search:
+    provider: [duckduckgo, google]
+    focus: true
+    target: _self

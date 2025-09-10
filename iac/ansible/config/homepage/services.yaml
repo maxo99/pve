@@ -1,0 +1,34 @@
+---
+# Homepage Services - Static Configuration
+
+# Infrastructure Services
+- Infrastructure:
+    - Proxmox VE:
+        icon: proxmox.png
+        href: https://192.168.6.4:8006
+        description: Proxmox VE Management Interface
+        
+    - HashiCorp Vault:
+        icon: vault.png
+        href: http://192.168.6.3:8200
+        description: Secrets Management
+        
+# Monitoring Services
+- Monitoring:
+    - Homepage Health:
+        icon: homepage.png
+        href: http://192.168.6.100:3000
+        description: This Dashboard
+        # widget:
+        #   type: resources
+        #   cpu: true
+        #   memory: true
+        #   disk: /
+
+# Add your services here as you deploy them
+# Example:
+# - Services:
+#     - App Name:
+#         icon: app-icon.png
+#         href: http://192.168.6.x:port
+#         description: App Description
