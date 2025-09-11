@@ -1,3 +1,34 @@
+locals {
+  # VM type flags
+  is_haos = var.vm_type == "haos"
+  is_standard = var.vm_type == "standard"
+  
+  # HAOS-specific settings
+  haos_settings = local.is_haos ? {
+    bios          = "ovmf"
+    machine       = "q35"
+    disk_interface = "scsi0"
+    scsi_hardware = "virtio-scsi-pci"
+    boot_order    = ["scsi0"]
+    os_type       = "l26"
+    tablet        = false
+    has_efi_disk  = true
+    has_serial    = true
+    ssd_flag      = true
+  } : {
+    bios          = null
+    machine       = null
+    disk_interface = "virtio0"
+    scsi_hardware = null
+    boot_order    = null
+    os_type       = "other"
+    tablet        = true
+    has_efi_disk  = false
+    has_serial    = false
+    ssd_flag      = null
+  }
+}
+
 resource "proxmox_virtual_environment_vm" "vm" {
   name      = var.vm_name
   node_name = var.node_name
@@ -6,15 +37,17 @@ resource "proxmox_virtual_environment_vm" "vm" {
   description = var.description
   tags        = var.tags
   
-  # HAOS-specific settings
-  bios          = var.vm_type == "haos" ? "ovmf" : null
-  machine       = var.vm_type == "haos" ? "q35" : null
-  on_boot       = var.start_on_boot
+  # Hardware settings
   started       = true
+  bios          = local.haos_settings.bios
+  machine       = local.haos_settings.machine
+  on_boot       = var.start_on_boot
+  scsi_hardware = local.haos_settings.scsi_hardware
+  boot_order    = local.haos_settings.boot_order
+  tablet_device = local.haos_settings.tablet
 
   cpu {
     cores = var.cores
-    # type  = var.cpu_type
   }
 
   memory {
@@ -23,7 +56,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
   
   # EFI disk for HAOS VMs
   dynamic "efi_disk" {
-    for_each = var.vm_type == "haos" ? [1] : []
+    for_each = local.haos_settings.has_efi_disk ? [1] : []
     content {
       datastore_id = "local-lvm"
       file_format  = "raw"
@@ -32,26 +65,23 @@ resource "proxmox_virtual_environment_vm" "vm" {
   }
 
   disk {
-    # datastore_id = var.datastore_id
     datastore_id = "local-lvm"
-    import_from  = var.vm_type == "haos" ? null : var.cloud_image_id
-    file_id      = var.vm_type == "haos" ? var.cloud_image_id : null
-    interface    = var.vm_type == "haos" ? "scsi0" : "virtio0"
+    import_from  = local.is_haos ? null : var.cloud_image_id
+    file_id      = local.is_haos ? var.cloud_image_id : null
+    interface    = local.haos_settings.disk_interface
     size         = var.disk_size
     iothread     = true
     discard      = "on"
-    ssd          = var.vm_type == "haos" ? true : null
+    ssd          = local.haos_settings.ssd_flag
   }
 
   agent {
     enabled = true
-    # timeout = var.agent_timeout # Use configurable timeout
-    # trim    = true              # Enable TRIM support for better disk performance
   }
 
-  # Only add cloud-init initialization for standard VMs
+  # Cloud-init initialization for standard VMs only
   dynamic "initialization" {
-    for_each = var.vm_type == "standard" ? [1] : []
+    for_each = local.is_standard ? [1] : []
     content {
       ip_config {
         ipv4 {
@@ -64,27 +94,17 @@ resource "proxmox_virtual_environment_vm" "vm" {
   }
 
   network_device {
-    # bridge      = var.network_bridge
-    # mac_address = var.mac_address
     bridge = "vmbr0"
-    # model  = "virtio"
   }
   
   # Operating system type
   operating_system {
-    type = var.vm_type == "haos" ? "l26" : "other"
+    type = local.haos_settings.os_type
   }
 
   # Serial console for HAOS
   dynamic "serial_device" {
-    for_each = var.vm_type == "haos" ? [1] : []
+    for_each = local.haos_settings.has_serial ? [1] : []
     content {}
   }
-  
-  # Tablet device settings
-  tablet_device = var.vm_type == "haos" ? false : true
-  
-  # SCSI hardware for HAOS
-  scsi_hardware = var.vm_type == "haos" ? "virtio-scsi-pci" : null
-  boot_order    = var.vm_type == "haos" ? ["scsi0"] : null
 }
