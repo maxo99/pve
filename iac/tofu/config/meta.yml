@@ -1,5 +1,28 @@
 vm:
-  - name: "webserver"
+  # 199 - Home Assistant OS
+  - vm_name: haos
+    vm_id: 199
+    node_name: pve-01
+    description: Home Assistant OS VM
+    tags:
+    - vm
+    - haos
+    memory: 4096
+    cores: 4
+    disk_size: 32
+    network_bridge: vmbr0
+    # ip_config:
+    #   ipv4_address: 192.168.6.199/22
+    #   gateway: 192.168.4.1
+    datastore_id: local-lvm
+    start_at_boot: true
+    generate_admin_password: false
+    admin_user: admin
+    vm_type: haos
+    haos_version: stable
+    packages: []
+    custom_scripts: []
+
 lxc:
   # 100 - HomePage Dashboard
   - container_name: homepage

@@ -1,9 +1,9 @@
 locals {
 
-  meta_config = yamldecode(file("${path.module}/config/meta.yml"))
+  lxc_meta = yamldecode(file("${path.module}/config/meta.yml")).lxc
 
   lxc_configs = {
-    for idx, config in local.meta_config.lxc :
+    for idx, config in local.lxc_meta :
     config.container_name => merge(config, { lxc_idx = idx + 1 })
   }
 
@@ -47,7 +47,7 @@ module "lxcs" {
   unprivileged    = lookup(each.value, "unprivileged", true)
   packages        = lookup(each.value, "packages", [])
   custom_scripts  = lookup(each.value, "custom_scripts", [])
-  start_on_boot   = lookup(each.value, "start_on_boot", false)
+  start_on_boot   = lookup(each.value, "start_on_boot", true)
   mount_points    = lookup(each.value, "mount_points", [])
 
   # Password generation and Vault storage (optional)

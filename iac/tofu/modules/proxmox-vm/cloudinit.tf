@@ -22,6 +22,7 @@ locals {
 
 
 resource "proxmox_virtual_environment_file" "cloud_init_snippet" {
+  count = var.vm_type == "standard" ? 1 : 0
   content_type = "snippets"
   datastore_id = "local"
   node_name    = var.node_name

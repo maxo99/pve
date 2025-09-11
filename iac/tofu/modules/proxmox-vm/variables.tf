@@ -78,13 +78,6 @@ variable "ssh_public_key" {
   type        = string
 }
 
-# === LEGACY VARIABLE (COMMENTED FOR REFERENCE) ===
-# variable "base_cloud_init" {
-#   description = "Base cloud-init configuration common to all VMs"
-#   type        = string
-#   default     = ""  # If empty, the module's default template will be used  
-# }
-
 variable "memory" {
   description = "Dedicated RAM memory in MB"
   type        = number
@@ -181,4 +174,14 @@ variable "default_admin_password" {
   type        = string
   default     = "changeMe123"
   sensitive   = true
+}
+
+variable "vm_type" {
+  description = "Type of VM (standard or haos)"
+  type        = string
+  default     = "standard"
+  validation {
+    condition     = contains(["standard", "haos"], var.vm_type)
+    error_message = "vm_type must be either 'standard' or 'haos'."
+  }
 }
