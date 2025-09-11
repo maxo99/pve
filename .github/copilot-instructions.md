@@ -11,10 +11,9 @@
 
 ## General Guidelines
 - Always ask for clarification if the request is not clear.
-- **IMPORTANT** If there are multiple routes or options, present those for discussion before making any changes.
-- Multiple routes or options should be presented in a numbered list.
+- **IMPORTANT** If there are multiple routes or options, provide a single numbered list of options so that one can be selected before diving into a specific solution.
+- If multiple commands are needed, provide them in sub-list format once the main approach is selected.
 - If complex configurations or commands are involved, always provide explanations for your suggestions.
-- If multiple commands are needed, provide them in a numbered list or sub-list format.
 
 
 ## Formatting Guidelines
