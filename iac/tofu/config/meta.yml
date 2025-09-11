@@ -11,24 +11,23 @@ lxc:
     disk_size: 6
     dashboard: http://192.168.6.100:3000/system
     datastore_id: local-lvm
-    feature_nesting: true
     ip_config:
       ipv4_address: 192.168.6.100/22
       gateway: 192.168.4.1
     tags:
-    - dashboard
-    - web
-    - homepage
-    - lxc
+      - dashboard
+      - web
+      - homepage
+      - lxc
     packages:
-    - curl
-    - wget
-    - gnupg
-    - ca-certificates
-    - jq
-    - git
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - jq
+      - git
     custom_scripts:
-    - homepage.sh
+      - homepage.sh
 
   # 101 - Cockpit Management Interface
   - container_name: cockpit
@@ -51,8 +50,6 @@ lxc:
       ipv4_address: 192.168.6.101/22
       gateway: 192.168.4.1
     datastore_id: local-lvm
-    feature_nesting: true
-    generate_admin_password: false
     admin_user: cockpitadmin
     mount_points:
       - host_path: "/mnt/proxmox-shared"
@@ -105,9 +102,6 @@ lxc:
       ipv4_address: 192.168.6.103/22
       gateway: 192.168.4.1
     datastore_id: local-lvm
-    feature_nesting: true
-    generate_admin_password: false
-    admin_user: jellyfinadmin
     mount_points:
       - host_path: "/mnt/proxmox-shared"
         container_path: "/mnt/shared"
@@ -127,37 +121,6 @@ lxc:
     custom_scripts:
       - jellyfin.sh
 
-  # 104 - InfluxDB Time-series Database
-  - container_name: influxdb
-    container_id: 104
-    node_name: pve-01
-    description: Container LXC InfluxDB Time-series Database
-
-    memory: 2048
-    cores: 2
-    disk_size: 8
-    ip_config:
-      ipv4_address: 192.168.6.104/22
-      gateway: 192.168.4.1
-    datastore_id: local-lvm
-    feature_nesting: true
-    generate_admin_password: false
-    tags:
-      - database
-      - influxdb
-      - lxc
-    mount_points:
-      - host_path: "/mnt/proxmox-shared"
-        container_path: "/mnt/shared"
-        options: bind
-    packages:
-      - curl
-      - gpg
-      - gnupg
-      - ca-certificates
-    custom_scripts:
-      - influxdb.sh
-
   # 105 - Grafana Monitoring
   - container_name: grafana
     container_id: 105
@@ -168,8 +131,6 @@ lxc:
     disk_size: 4
     dashboard: http://192.168.6.105:3000
     datastore_id: local-lvm
-    feature_nesting: true
-    generate_admin_password: false
     admin_user: grafana
     mount_points: []
     ip_config:
@@ -191,8 +152,6 @@ lxc:
     node_name: pve-01
     description: Container LXC PostgreSQL Database Server
     datastore_id: local-lvm
-    feature_nesting: true
-    generate_admin_password: false
     default_user: postgres
     memory: 2048
     cores: 2
@@ -224,7 +183,6 @@ lxc:
     memory: 1024
     cores: 1
     disk_size: 8
-    generate_admin_password: false
     admin_user: redis
     ip_config:
       ipv4_address: 192.168.6.202/22
@@ -235,30 +193,54 @@ lxc:
     custom_scripts:
       - redis.sh
 
-  # 203 - MongoDB Database
-  - container_name: mongodb
+  # 203 - InfluxDB Time-series Database
+  - container_name: influxdb
     container_id: 203
     node_name: pve-01
-    description: Container LXC MongoDB
-    tags:
-      - db
-      - mongodb
-      - nosql
-      - lxc
-    memory: 1024
-    cores: 1
-    disk_size: 6
+    description: Container LXC InfluxDB Time-series Database
+    memory: 2048
+    cores: 2
+    disk_size: 8
     ip_config:
       ipv4_address: 192.168.6.203/22
       gateway: 192.168.4.1
     datastore_id: local-lvm
-    feature_nesting: true
+    tags:
+      - database
+      - influxdb
+      - lxc
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
     packages:
-      - gnupg
       - curl
+      - gpg
+      - gnupg
       - ca-certificates
     custom_scripts:
-      - mongodb.sh
-  
+      - influxdb.sh
 
-  
+  # # 204 - MongoDB Database
+  # - container_name: mongodb
+  #   container_id: 204
+  #   node_name: pve-01
+  #   description: Container LXC MongoDB
+  #   tags:
+  #     - db
+  #     - mongodb
+  #     - nosql
+  #     - lxc
+  #   memory: 1024
+  #   cores: 1
+  #   disk_size: 6
+  #   ip_config:
+  #     ipv4_address: 192.168.6.204/22
+  #     gateway: 192.168.4.1
+  #   datastore_id: local-lvm
+  #   packages:
+  #     - gnupg
+  #     - curl
+  #     - ca-certificates
+  #   custom_scripts:
+  #     - mongodb.sh

@@ -618,8 +618,12 @@ pve-logs-multi:
     ssh pve-01 'sudo tail -F /var/log/syslog /var/log/pve/tasks/*' | multitail -
 #
 #
-pve-logs-lxc name:
-    ssh pve-01 "journalctl --since '1 hour ago' | grep -E '({{ name }}|useradd)' | head -10"
+pve-logs-lxc id name:
+    ssh root@192.168.6.{{ id }} "journalctl -u {{ name }} -n 200 --no-pager"
+
+logs-homepage:
+    just pve-logs-lxc 100 "homepage"
+
 #
 # Run PCT exec 'cmd' for LXC 'id'
 pct-exec id cmd:

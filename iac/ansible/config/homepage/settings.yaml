@@ -2,15 +2,15 @@
 # Homepage Settings - Static Configuration
 # This file will be templated to the homepage instance
 
-title: "PVE Homelab Dashboard"
+title: "PVE-01 Homelab HomePage"
 theme: dark
 color: slate
 
 layout:
-  - Services:
+  - Management:
       style: row
       columns: 4
-  - Monitoring:
+  - Media:
       style: row  
       columns: 3
   - Infrastructure:
@@ -20,11 +20,11 @@ layout:
 headerStyle: clean
 hideVersion: false
 
-providers:
-  longhorn:
-    url: http://longhorn.local
-  kubernetes:
-    mode: cluster
+# providers:
+#   longhorn:
+#     url: http://longhorn.local
+#   kubernetes:
+#     mode: cluster
 
 quicklaunch:
   searchDescriptions: true
