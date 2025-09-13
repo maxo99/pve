@@ -1,0 +1,7 @@
+- name: Migrate USB Data
+  hosts: pve-01
+  become: true
+  vars:
+    ansible_user: '{{ pve_root_user }}'
+  roles:
+    - migrate_usb_data

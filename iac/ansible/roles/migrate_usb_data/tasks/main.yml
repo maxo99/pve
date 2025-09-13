@@ -1,0 +1,47 @@
+- name: Find duplicates on USB
+  shell: fdupes -S -r /mnt/usbdrive/Series /mnt/proxmox-shared/media/Series/
+  register: fdupes_output
+  changed_when: false
+
+- name: Debug fdupes output
+  debug:
+    var: fdupes_output.stdout
+
+- name: Parse duplicates and identify proper naming convention
+  shell: |
+    echo "{{ fdupes_output.stdout }}" | awk '
+    BEGIN { RS = "\n\n"; FS = "\n" }
+    NF > 1 {
+      size = $1
+      proper_file = ""
+      other_files = ""
+      
+      print "SIZE: " size
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /Season [0-9]+\/[^\/]+ S[0-9]+E[0-9]+/) {
+          print "KEEP: " $i " (proper format)"
+          if (proper_file == "") proper_file = $i
+        } else {
+          print "REVIEW: " $i
+          if (other_files == "") other_files = $i
+          else other_files = other_files "\n" $i
+        }
+      }
+      print ""
+    }'
+  register: duplicate_analysis
+  changed_when: false
+
+- name: Create output file for review
+  copy:
+    content: "{{ duplicate_analysis.stdout }}"
+    dest: /tmp/usb_duplicates_analysis.txt
+
+# - name: Remove duplicate files
+#   shell: |
+#     grep "^REMOVE:" -A 1000 /tmp/usb_duplicates_analysis.txt | grep "^/mnt/usbdrive" | while read file; do
+#       if [ -f "$file" ]; then
+#         rm "$file"
+#       fi
+#     done
+#   when: remove_duplicates is defined and remove_duplicates == true
