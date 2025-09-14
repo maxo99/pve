@@ -1,0 +1,57 @@
+---
+# Optional setup configuration for Docker stack
+# This file defines networks and volumes to create before deploying the stack
+
+networks:
+  - name: monitoring_network
+    driver: "bridge"
+  # - name: "example-network"
+  #   driver: "bridge"
+  #   ipam_config:
+  #     - subnet: "172.20.0.0/16"
+  #       gateway: "172.20.0.1"
+  #   labels:
+  #     project: "example"
+      
+  # - name: "example-external"
+  #   driver: "bridge"
+  #   options:
+  #     com.docker.network.bridge.name: "example-br"
+
+volumes:
+  - name: "influxdb-volume"
+    driver: "local"
+    # labels:
+    #   project: "example"
+    #   backup: "true"
+      
+  - name: "grafana-volume"
+    driver: "local"
+    # driver_options:
+    #   type: "none"
+    #   o: "bind"
+    #   device: "/opt/docker-compose/example/config"
+    # labels:
+    #   project: "example"
+
+# Additional examples:
+# 
+# networks:
+#   - name: "traefik-network"
+#     driver: "bridge"
+#   - name: "database-network" 
+#     driver: "bridge"
+#     ipam_config:
+#       - subnet: "172.21.0.0/16"
+#
+# volumes:
+#   - name: "postgres-data"
+#     driver: "local"
+#   - name: "redis-data"
+#     driver: "local"
+#   - name: "app-uploads"
+#     driver: "local"
+#     driver_options:
+#       type: "nfs"
+#       o: "addr=192.168.1.100,rw"
+#       device: ":/mnt/shared/uploads"

@@ -1,0 +1,81 @@
+---
+# Simple Docker stack deployment playbook
+# Usage: ansible-playbook deploy_stack.yml -e "target_host=192.168.6.110 stack_name=my-app stack_path=config/stacks/my-app"
+
+- name: Deploy Docker Compose Stack
+  hosts: "{{ target_host | default('docker_hosts') }}"
+  become: true
+  vars:
+    tasks_dir: "{{ playbook_dir }}/tasks"
+    stack_dir: "/opt/docker-compose/{{ stack_name }}"
+    
+  tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - stack_name is defined
+          - stack_path is defined
+        fail_msg: "Missing required variables: stack_name and stack_path"
+
+    - name: Install Docker
+      ansible.builtin.include_tasks: "{{ tasks_dir }}/docker/install.yaml"
+
+    - name: Create stack directory
+      ansible.builtin.file:
+        path: "{{ stack_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Check for optional setup configuration
+      ansible.builtin.stat:
+        path: "{{ stack_path }}/setup.yml"
+      register: setup_config
+      delegate_to: localhost
+      become: false
+
+    - name: Load setup configuration if present
+      ansible.builtin.include_vars:
+        file: "{{ stack_path }}/setup.yml"
+        name: stack_setup
+      when: setup_config.stat.exists
+      delegate_to: localhost
+      become: false
+
+    - name: Create Docker networks if defined
+      community.docker.docker_network:
+        name: "{{ item.name }}"
+        driver: "{{ item.driver | default('bridge') }}"
+        ipam_config: "{{ item.ipam_config | default(omit) }}"
+        options: "{{ item.options | default(omit) }}"
+        labels: "{{ item.labels | default(omit) }}"
+      loop: "{{ stack_setup.networks | default([]) }}"
+      when: 
+        - setup_config.stat.exists
+        - stack_setup.networks is defined
+
+    - name: Create Docker volumes if defined
+      community.docker.docker_volume:
+        name: "{{ item.name }}"
+        driver: "{{ item.driver | default('local') }}"
+        driver_options: "{{ item.driver_options | default(omit) }}"
+        labels: "{{ item.labels | default(omit) }}"
+      loop: "{{ stack_setup.volumes | default([]) }}"
+      when: 
+        - setup_config.stat.exists
+        - stack_setup.volumes is defined
+
+    - name: Deploy stack using existing docker tasks
+      ansible.builtin.include_tasks: "{{ tasks_dir }}/docker/update-dockercompose.yml"
+      vars:
+        update_compose_remote_path: "{{ stack_dir }}/docker-compose.yml"
+        update_compose_local_path: "{{ stack_path }}/docker-compose.yml"
+        update_compose_project_path: "{{ stack_dir }}"
+
+    - name: Show deployment info
+      ansible.builtin.debug:
+        msg: |
+          Stack '{{ stack_name }}' deployed to {{ inventory_hostname }}
+          Location: {{ stack_dir }}
+          Access via: ssh {{ ansible_user }}@{{ ansible_host }}
