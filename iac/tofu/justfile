@@ -128,13 +128,14 @@ vault-debug:
     echo -e "\n=== Available API Credentials ==="
     curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/terraform/metadata/api_credentials/?list=true" | jq -r '.data.keys[]'
 
-pve-lxc-check:
+pve-lxc-list:
     #!/bin/bash
     echo "=== Container Status on PVE ==="
     ssh pve-01 "pct list"
-    echo -e "\n=== Hook Scripts ==="
-    ssh pve-01 "ls -la /var/lib/vz/snippets/*hook* 2>/dev/null || echo 'No hook scripts found'"
-
+#
+# Retrieve LXC hookscript 
+pve-lxc-hook-content name:
+    ssh pve-01 "cat /var/lib/vz/snippets/*{{name}}*.sh"
 
 
 #

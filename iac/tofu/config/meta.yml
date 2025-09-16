@@ -144,6 +144,37 @@ lxc:
     custom_scripts:
       - jellyfin.sh
 
+  # 104 - Jellyseerr Web UI
+  - container_name: jellyseer
+    container_id: 104
+    node_name: pve-01
+    description: Container LXC Jellyseerr Web UI
+    tags:
+      - media
+      - jellyseerr
+      - lxc
+    memory: 4096
+    cores: 4
+    disk_size: 8
+    dashboard: http://192.168.6.104:5055
+    ip_config:
+      ipv4_address: 192.168.6.104/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
+    packages:
+      - curl
+      - git
+      - gpg
+      - gnupg
+      - ca-certificates
+      - nodejs
+    custom_scripts:
+      - jellyseer.sh
+
   # 105 - Grafana Monitoring
   - container_name: grafana
     container_id: 105
