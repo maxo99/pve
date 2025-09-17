@@ -3,17 +3,34 @@
 
 set -e
 
+# Source helper functions (available via hook orchestrator)
+source /tmp/lxc-helpers.sh
+
 echo "Starting Cockpit configuration..."
 
 # Function to safely download and install .deb packages
 install_cockpit_module() {
     local repo_name="$1"
     local module_name="$2"
+    local version="${3:-latest}"
     
     echo "Installing Cockpit ${module_name} module..."
     
-    # Get the latest release info and extract download URL more safely
-    local release_info=$(curl -fsSL "https://api.github.com/repos/45Drives/${repo_name}/releases/latest")
+    # Use specific version if provided, otherwise latest
+    local api_url
+    if [ "$version" = "latest" ]; then
+        api_url="https://api.github.com/repos/45Drives/${repo_name}/releases/latest"
+    else
+        api_url="https://api.github.com/repos/45Drives/${repo_name}/releases/tags/v${version}"
+    fi
+    
+    # Get the release info
+    local release_info
+    if ! release_info=$(curl -fsSL "$api_url" 2>/dev/null); then
+        echo "Warning: Failed to fetch release info for ${repo_name}, skipping..."
+        return 1
+    fi
+    
     local download_url=$(echo "$release_info" | jq -r '.assets[] | select(.name | contains("jammy")) | .browser_download_url' | head -1)
     
     # Fallback to focal if jammy not available
@@ -22,9 +39,15 @@ install_cockpit_module() {
         download_url=$(echo "$release_info" | jq -r '.assets[] | select(.name | contains("focal")) | .browser_download_url' | head -1)
     fi
     
+    # Try ubuntu-specific packages
+    if [ "$download_url" = "null" ] || [ -z "$download_url" ]; then
+        echo "Focal package not found, trying ubuntu packages..."
+        download_url=$(echo "$release_info" | jq -r '.assets[] | select(.name | contains("ubuntu")) | .browser_download_url' | head -1)
+    fi
+    
     # Final fallback to any .deb file
     if [ "$download_url" = "null" ] || [ -z "$download_url" ]; then
-        echo "Focal package not found, trying any available .deb..."
+        echo "Ubuntu package not found, trying any available .deb..."
         download_url=$(echo "$release_info" | jq -r '.assets[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
     fi
     
@@ -44,16 +67,20 @@ install_cockpit_module() {
 }
 
 # Start and enable Cockpit
-systemctl start cockpit
-systemctl enable cockpit
+echo "Starting Cockpit service..."
+ensure_service_running cockpit || {
+    echo "Starting Cockpit manually..."
+    systemctl start cockpit
+    systemctl enable cockpit
+}
 
 # Install Cockpit modules with error handling
 install_cockpit_module "cockpit-file-sharing" "File Sharing" || echo "File Sharing module installation failed, continuing..."
 install_cockpit_module "cockpit-identities" "Identities" || echo "Identities module installation failed, continuing..."
-install_cockpit_module "cockpit-navigator" "Navigator" || echo "Navigator module installation failed, continuing..."
+install_cockpit_module "cockpit-navigator" "Navigator" "0.5.10" || echo "Navigator module installation failed, continuing..."
 
 
-# Configure Samba for file sharing (since NFS is problematic in LXC)
+# Configure Samba for file sharing
 echo "Configuring Samba file sharing..."
 mkdir -p /etc/samba
 cat > /etc/samba/smb.conf << 'EOF'

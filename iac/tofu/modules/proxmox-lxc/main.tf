@@ -104,9 +104,9 @@ resource "proxmox_virtual_environment_container" "lxc" {
     down_delay = "60"
   }
 
-  # Monitor hook script execution status
-  provisioner "local-exec" {
-    command = local.monitor_script
-  }
+  # # Monitor hook script execution status
+  # provisioner "local-exec" {
+  #   command = local.monitor_script
+  # }
 
 }
