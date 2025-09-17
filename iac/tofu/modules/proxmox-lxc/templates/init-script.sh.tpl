@@ -67,8 +67,27 @@ $${content}
 EOF"
 }
 
+# Copy helper functions into container
+copy_helpers_to_container() {
+    local helpers_content
+    helpers_content=$(cat <<'HELPERS_EOF'
+${helpers_content}
+HELPERS_EOF
+)
+    write_to_container "/tmp/lxc-helpers.sh" "$helpers_content"
+    lxc_exec chmod +x /tmp/lxc-helpers.sh
+}
+
+# Function to source helpers inside container commands
+lxc_exec_with_helpers() {
+    lxc-attach -n "$VMID" -- /bin/bash -c "source /tmp/lxc-helpers.sh && $*"
+}
+
 echo "Starting LXC container initialization for ${hostname} (ID: $VMID)"
 log_status "MOUNT_PREP" "Starting host-side mount point preparation"
+
+# Copy helper functions to container first
+copy_helpers_to_container
 
 # Ensure host-side mount point directories exist and have appropriate permissions
 %{ for mount_point in mount_points ~}
@@ -87,26 +106,9 @@ log_status "MOUNT_PREP" "Host-side mount point preparation completed"
 # Update the system and install base packages inside container
 log_status "SYSTEM_UPDATE" "Starting system update and package installation"
 
-# Temporarily disable set -e for error handling
-set +e
-lxc_exec apt-get update -y
-if [ $? -ne 0 ]; then
-    log_error "SYSTEM_UPDATE" "Failed to update package lists"
-fi
+# Use helper function for package installation
+lxc_exec_with_helpers "ensure_packages ${packages}"
 
-lxc_exec apt-get upgrade -y
-if [ $? -ne 0 ]; then
-    log_error "SYSTEM_UPDATE" "Failed to upgrade system packages"
-fi
-
-# Install required packages inside container
-lxc_exec apt-get install -y openssh-server sudo ${packages}
-if [ $? -ne 0 ]; then
-    log_error "SYSTEM_UPDATE" "Failed to install required packages"
-fi
-
-# Re-enable set -e
-set -e
 log_status "SYSTEM_UPDATE" "System update and package installation completed"
 
 
@@ -116,52 +118,18 @@ log_status "USER_CONFIG" "Starting user configuration"
 # Temporarily disable set -e for error handling
 set +e
 
-if ! lxc_exec id ${default_user} &>/dev/null; then
-  lxc_exec useradd -m -s /bin/bash ${default_user}
-  if [ $? -ne 0 ]; then
-      log_error "USER_CONFIG" "Failed to create user ${default_user}"
-  fi
-  
-  write_to_container "/etc/sudoers.d/${default_user}" "${default_user} ALL=(ALL) NOPASSWD:ALL"
-  
-  # Ensure the file exists inside the container before setting perms
-  if ! lxc_exec test -f /etc/sudoers.d/${default_user}; then
-      log_error "USER_CONFIG" "sudoers file was not created inside container"
-  fi
-  
-  lxc_exec chmod 440 /etc/sudoers.d/${default_user}
-  if [ $? -ne 0 ]; then
-      log_error "USER_CONFIG" "Failed to set permissions on sudoers file"
-  fi
-  
-  # Configure SSH for the user inside container
-  lxc_exec mkdir -p /home/${default_user}/.ssh
-  if [ $? -ne 0 ]; then
-      log_error "USER_CONFIG" "Failed to create .ssh directory"
-  fi
-  
-  write_to_container "/home/${default_user}/.ssh/authorized_keys" "${ssh_pub_key}"
-  
-  # Ensure authorized_keys exists before adjusting perms/ownership
-  if ! lxc_exec test -f /home/${default_user}/.ssh/authorized_keys; then
-      log_error "USER_CONFIG" "authorized_keys was not created inside container"
-  fi
-  
-  lxc_exec chmod 700 /home/${default_user}/.ssh
-  if [ $? -ne 0 ]; then
-      log_error "USER_CONFIG" "Failed to set .ssh directory permissions"
-  fi
-  
-  lxc_exec chmod 600 /home/${default_user}/.ssh/authorized_keys
-  if [ $? -ne 0 ]; then
-      log_error "USER_CONFIG" "Failed to set authorized_keys permissions"
-  fi
-  
-  lxc_exec chown -R ${default_user}:${default_user} /home/${default_user}/.ssh
-  if [ $? -ne 0 ]; then
-      log_error "USER_CONFIG" "Failed to set .ssh directory ownership"
-  fi
-fi
+# Use helper function for user creation and SSH setup
+user_setup_script='
+ensure_user "${default_user}" "/home/${default_user}" "/bin/bash"
+echo "${default_user} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${default_user}
+chmod 440 /etc/sudoers.d/${default_user}
+ensure_directory "/home/${default_user}/.ssh" "${default_user}:${default_user}" "700"
+echo "${ssh_pub_key}" > /home/${default_user}/.ssh/authorized_keys
+chmod 600 /home/${default_user}/.ssh/authorized_keys
+chown ${default_user}:${default_user} /home/${default_user}/.ssh/authorized_keys
+'
+
+lxc_exec_with_helpers "$user_setup_script"
 
 # Re-enable set -e
 set -e
@@ -174,11 +142,7 @@ log_status "MOUNT_CONFIG" "Starting container mount point configuration"
 set +e
 
 %{ for mount_point in mount_points ~}
-echo "Creating mount point directory: ${mount_point.container_path}"
-lxc_exec mkdir -p "${mount_point.container_path}"
-if [ $? -ne 0 ]; then
-    log_error "MOUNT_CONFIG" "Failed to create mount point ${mount_point.container_path}"
-fi
+lxc_exec_with_helpers "ensure_directory '${mount_point.container_path}' 'root:root' '755'"
 %{ endfor ~}
 
 # Re-enable set -e
@@ -235,15 +199,7 @@ log_status "SSH_CONFIG" "Configuring SSH service"
 # Temporarily disable set -e for error handling
 set +e
 
-lxc_exec systemctl enable ssh
-if [ $? -ne 0 ]; then
-    log_error "SSH_CONFIG" "Failed to enable SSH service"
-fi
-
-lxc_exec systemctl start ssh
-if [ $? -ne 0 ]; then
-    log_error "SSH_CONFIG" "Failed to start SSH service"
-fi
+lxc_exec_with_helpers "ensure_service_running ssh"
 
 # Re-enable set -e
 set -e

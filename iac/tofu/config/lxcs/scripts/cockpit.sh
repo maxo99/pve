@@ -53,7 +53,7 @@ install_cockpit_module "cockpit-identities" "Identities" || echo "Identities mod
 install_cockpit_module "cockpit-navigator" "Navigator" || echo "Navigator module installation failed, continuing..."
 
 
-# Configure Samba for file sharing (since NFS is problematic in LXC)
+# Configure Samba for file sharing
 echo "Configuring Samba file sharing..."
 mkdir -p /etc/samba
 cat > /etc/samba/smb.conf << 'EOF'

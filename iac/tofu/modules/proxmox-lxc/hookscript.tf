@@ -6,6 +6,9 @@ locals {
     file("${path.root}/config/lxcs/scripts/${script_file}")
   ]
 
+  # Read helpers file content
+  helpers_content = file("${path.module}/templates/helpers.sh")
+
   # Populate LXC init script template with variables
   init_script = templatefile("${path.module}/templates/init-script.sh.tpl", {
     default_user           = var.default_user
@@ -13,11 +16,12 @@ locals {
     ansible_ssh_pub_key    = trimspace(var.ansible_ssh_public_key)
     proxmox_ssh_pub_key    = trimspace(var.proxmox_ssh_public_key)
     hostname               = var.container_name
-    packages               = join(" ", var.packages)
+    packages               = join(" ", concat(["openssh-server", "sudo", "jq"], var.packages))
     custom_script_contents = local.custom_script_contents
     generated_password     = var.generate_admin_password ? try(random_password.admin_password[0].result, "") : var.default_password
     mount_points           = var.mount_points
     run_id                 = var.run_id
+    helpers_content        = local.helpers_content
   })
 
   # Populate monitoring script template

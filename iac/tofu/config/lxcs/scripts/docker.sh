@@ -4,6 +4,9 @@
 
 set -e
 
+# Source helper functions (available via init template)
+source /tmp/lxc-helpers.sh 2>/dev/null || true
+
 echo "Starting Docker setup..."
 
 # Function to check if Docker is installed and running
@@ -99,8 +102,12 @@ configure_docker() {
 EOF
     
     # Enable and start Docker service
-    systemctl enable docker
-    systemctl start docker
+    if command -v ensure_service_running >/dev/null 2>&1; then
+        ensure_service_running "docker"
+    else
+        systemctl enable docker
+        systemctl start docker
+    fi
     
     echo "Docker configuration completed"
 }
@@ -300,7 +307,11 @@ if [ $docker_status -eq 2 ]; then
     configure_docker
 elif [ $docker_status -eq 1 ]; then
     echo "=== Starting Docker Service ==="
-    systemctl start docker
+    if command -v ensure_service_running >/dev/null 2>&1; then
+        ensure_service_running "docker"
+    else
+        systemctl start docker
+    fi
     configure_docker
 else
     echo "=== Docker Already Installed, Checking Configuration ==="
@@ -309,9 +320,13 @@ else
         configure_docker
     fi
     # Ensure Docker is enabled and running
-    systemctl enable docker
-    if ! systemctl is-active --quiet docker; then
-        systemctl start docker
+    if command -v ensure_service_running >/dev/null 2>&1; then
+        ensure_service_running "docker"
+    else
+        systemctl enable docker
+        if ! systemctl is-active --quiet docker; then
+            systemctl start docker
+        fi
     fi
 fi
 
