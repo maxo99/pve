@@ -322,6 +322,32 @@ lxc:
     custom_scripts:
       - stirling-pdf.sh
 
+  # 107 - Glance Dashboard
+  - container_name: glance
+    container_id: 107
+    node_name: pve-01
+    description: Container LXC Glance Dashboard Service
+    dashboard: http://192.168.6.107:8080
+    tags:
+      - dashboard
+      - glance
+      - startpage
+      - lxc
+    memory: 512
+    cores: 1
+    disk_size: 2
+    ip_config:
+      ipv4_address: 192.168.6.107/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    packages:
+      - curl
+      - wget
+      - jq
+      - ca-certificates
+    custom_scripts:
+      - glance.sh
+
   # 110 - Docker Compose Stack
   - container_name: docker
     container_id: 110
