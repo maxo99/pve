@@ -1,0 +1,24 @@
+---
+# Glance role main tasks
+
+- name: Include variable validation
+  ansible.builtin.include_tasks: validate.yml
+  tags: [glance, validate]
+
+- name: Include system preparation tasks
+  ansible.builtin.include_tasks: system.yml
+  tags: [glance, system]
+
+- name: Include configuration management tasks
+  ansible.builtin.include_tasks: config.yml
+  when: glance_manage_config
+  tags: [glance, config]
+
+- name: Include service management tasks
+  ansible.builtin.include_tasks: service.yml
+  tags: [glance, service]
+
+- name: Include health check tasks
+  ansible.builtin.include_tasks: health_check.yml
+  when: glance_health_check_enabled
+  tags: [glance, health_check]

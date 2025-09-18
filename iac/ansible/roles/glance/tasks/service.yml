@@ -1,0 +1,37 @@
+---
+# Service management tasks for Glance
+
+- name: Create glance systemd service file
+  ansible.builtin.template:
+    src: glance.service.j2
+    dest: /etc/systemd/system/{{ glance_service_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify:
+    - reload systemd
+    - restart glance
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start glance service
+  ansible.builtin.systemd:
+    name: "{{ glance_service_name }}"
+    enabled: "{{ glance_service_enabled }}"
+    state: "{{ glance_service_state }}"
+
+- name: Check if glance service is running
+  ansible.builtin.systemd:
+    name: "{{ glance_service_name }}"
+  register: glance_service_status
+
+- name: Display service status
+  ansible.builtin.debug:
+    msg:
+      - "Service: {{ glance_service_name }}"
+      - "Status: {{ glance_service_status.status.ActiveState }}"
+      - "Enabled: {{ glance_service_status.status.UnitFileState }}"
+      - "PID: {{ glance_service_status.status.MainPID | default('N/A') }}"

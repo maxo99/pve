@@ -1,0 +1,36 @@
+[Unit]
+Description=Glance Dashboard
+Documentation=https://github.com/glanceapp/glance
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User={{ glance_user }}
+Group={{ glance_group }}
+WorkingDirectory={{ glance_install_dir }}
+ExecStart={{ glance_binary_path }} --config {{ glance_config_dir }}/glance.yml
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{ glance_service_name }}
+
+# Environment variables
+{% for key, value in glance_env_vars.items() %}
+Environment="{{ key }}={{ value }}"
+{% endfor %}
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ glance_install_dir }} {{ glance_config_dir }} {{ glance_assets_dir }}
+
+# Resource limits
+LimitNOFILE=65536
+TasksMax=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+---
+# Glance configuration playbook
+# Usage:
+#   ansible-playbook glance.yml                     # Deploy/update all glance config
+#   ansible-playbook glance.yml --tags config      # Update only configuration files
+#   ansible-playbook glance.yml --tags service     # Manage only service
+#   ansible-playbook glance.yml --tags validate    # Run validation checks
+
+- name: Configure Glance Dashboard
+  hosts: glance
+  become: true
+  gather_facts: true
+  
+  roles:
+    - role: glance
+      tags: [glance]
+
+  post_tasks:
+    - name: Display glance access information
+      ansible.builtin.debug:
+        msg:
+          - "Glance has been configured successfully"
+          - "Access URL: http://{{ ansible_default_ipv4.address }}:{{ glance_port }}"
+          - "SSH Access: ssh {{ ansible_user }}@{{ ansible_default_ipv4.address }}"
+          - "Config Directory: {{ glance_config_dir }}"
+          - "Assets Directory: {{ glance_assets_dir }}"
+      tags: [glance, info]

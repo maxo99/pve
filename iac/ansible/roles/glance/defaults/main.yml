@@ -1,0 +1,66 @@
+---
+# Glance role default variables
+
+# Service configuration
+glance_service_name: glance
+glance_user: glance
+glance_group: glance
+glance_home_dir: /home/glance
+glance_install_dir: /opt/glance
+glance_config_dir: "{{ glance_install_dir }}/config"
+glance_assets_dir: "{{ glance_install_dir }}/assets"
+
+# Network configuration
+glance_port: 8080
+glance_bind_address: "0.0.0.0"
+
+# Environment configuration
+glance_env_vars:
+  GLANCE_CONFIG_DIR: "{{ glance_config_dir }}"
+  GLANCE_ASSETS_DIR: "{{ glance_assets_dir }}"
+  GLANCE_PORT: "{{ glance_port }}"
+  HOME: "{{ glance_home_dir }}"
+
+# Binary configuration
+glance_version: "latest"  # Can be "latest" or specific version
+glance_binary_url: "https://github.com/glanceapp/glance/releases/latest/download/glance-linux-amd64"
+glance_binary_path: "{{ glance_install_dir }}/glance"
+glance_auto_update: false
+glance_backup_before_update: true
+
+# Configuration management
+glance_manage_config: true
+glance_backup_config: true
+glance_config_backup_dir: "{{ glance_install_dir }}/backups"
+
+# Default configuration files (based on your data directory structure)
+glance_default_configs:
+  - glance.yml
+  - home.yml
+
+# Default asset files
+glance_default_assets:
+  - user.css
+
+# Service management
+glance_service_enabled: true
+glance_service_state: started
+glance_restart_on_config_change: true
+
+# Firewall (if managing with ansible)
+glance_manage_firewall: false
+glance_firewall_ports:
+  - "{{ glance_port }}/tcp"
+
+# Monitoring
+glance_health_check_enabled: true
+glance_health_check_url: "http://localhost:{{ glance_port }}"
+glance_health_check_timeout: 30
+
+# File permissions
+glance_file_mode: "0644"
+glance_dir_mode: "0755"
+glance_binary_mode: "0755"
+
+# Timezone sync (equivalent to /etc/localtime mount in docker)
+glance_sync_timezone: true

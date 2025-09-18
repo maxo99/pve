@@ -1,0 +1,22 @@
+---
+# Glance role handlers
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart glance
+  ansible.builtin.systemd:
+    name: "{{ glance_service_name }}"
+    state: restarted
+  when: glance_service_state == "started"
+
+- name: stop glance
+  ansible.builtin.systemd:
+    name: "{{ glance_service_name }}"
+    state: stopped
+
+- name: start glance
+  ansible.builtin.systemd:
+    name: "{{ glance_service_name }}"
+    state: started

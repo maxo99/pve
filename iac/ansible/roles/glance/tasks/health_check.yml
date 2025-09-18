@@ -1,0 +1,32 @@
+---
+# Health check tasks for Glance
+
+- name: Wait for glance service to be ready
+  ansible.builtin.wait_for:
+    port: "{{ glance_port }}"
+    host: "{{ glance_bind_address }}"
+    timeout: "{{ glance_health_check_timeout }}"
+    delay: 5
+  when: glance_service_state == "started"
+
+- name: Perform HTTP health check
+  ansible.builtin.uri:
+    url: "{{ glance_health_check_url }}"
+    method: GET
+    timeout: 10
+    status_code: 200
+  register: glance_health_check_result
+  retries: 3
+  delay: 5
+  until: glance_health_check_result.status == 200
+  when: glance_service_state == "started"
+
+- name: Display health check results
+  ansible.builtin.debug:
+    msg:
+      - "Health check URL: {{ glance_health_check_url }}"
+      - "Status: {{ glance_health_check_result.status | default('Failed') }}"
+      - "Response time: {{ glance_health_check_result.elapsed | default('N/A') }}s"
+  when: 
+    - glance_service_state == "started"
+    - glance_health_check_result is defined

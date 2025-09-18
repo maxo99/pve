@@ -1,0 +1,44 @@
+---
+# Variable validation tasks for Glance role
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - glance_service_name is defined
+      - glance_service_name | length > 0
+      - glance_user is defined
+      - glance_user | length > 0
+      - glance_group is defined
+      - glance_group | length > 0
+      - glance_port is defined
+      - glance_port is number
+      - glance_port > 0
+      - glance_port < 65536
+      - glance_install_dir is defined
+      - glance_install_dir | length > 0
+      - glance_config_dir is defined
+      - glance_config_dir | length > 0
+      - glance_assets_dir is defined
+      - glance_assets_dir | length > 0
+    fail_msg: "One or more required variables are not properly defined"
+    success_msg: "All required variables are properly defined"
+
+- name: Validate glance binary URL format
+  ansible.builtin.assert:
+    that:
+      - glance_binary_url is defined
+      - glance_binary_url | length > 0
+      - glance_binary_url is match("^https?://.*")
+    fail_msg: "glance_binary_url must be a valid HTTP/HTTPS URL"
+    success_msg: "Binary URL validation passed"
+
+- name: Display configuration summary
+  ansible.builtin.debug:
+    msg:
+      - "Glance service: {{ glance_service_name }}"
+      - "User/Group: {{ glance_user }}/{{ glance_group }}"
+      - "Port: {{ glance_port }}"
+      - "Install directory: {{ glance_install_dir }}"
+      - "Config directory: {{ glance_config_dir }}"
+      - "Assets directory: {{ glance_assets_dir }}"
+      - "Binary URL: {{ glance_binary_url }}"

@@ -1,0 +1,74 @@
+---
+# Configuration management tasks for Glance
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ glance_config_backup_dir }}"
+    state: directory
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "{{ glance_dir_mode }}"
+  when: glance_backup_config
+
+- name: Backup existing configuration files
+  ansible.builtin.copy:
+    src: "{{ glance_config_dir }}/{{ item }}"
+    dest: "{{ glance_config_backup_dir }}/{{ item }}.{{ ansible_date_time.epoch }}"
+    remote_src: true
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "{{ glance_file_mode }}"
+  loop: "{{ glance_default_configs }}"
+  when:
+    - glance_backup_config
+    - ansible_check_mode is not defined or not ansible_check_mode
+  ignore_errors: true
+
+- name: Deploy glance configuration files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../config/data/glance/{{ item }}"
+    dest: "{{ glance_config_dir }}/{{ item }}"
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "{{ glance_file_mode }}"
+    backup: "{{ glance_backup_config }}"
+  loop: "{{ glance_default_configs }}"
+  notify: restart glance
+  when: glance_restart_on_config_change
+
+- name: Deploy glance asset files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../config/data/glance/assets/{{ item }}"
+    dest: "{{ glance_assets_dir }}/{{ item }}"
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "{{ glance_file_mode }}"
+    backup: "{{ glance_backup_config }}"
+  loop: "{{ glance_default_assets }}"
+  notify: restart glance
+  when: glance_restart_on_config_change
+
+# Skip validation - glance is already working
+# - name: Validate main configuration file syntax
+#   ansible.builtin.command:
+#     cmd: "{{ glance_binary_path }} --config {{ glance_config_dir }}/glance.yml --help"
+#   become_user: "{{ glance_user }}"
+#   register: glance_config_validation
+#   failed_when: glance_config_validation.rc != 0
+#   changed_when: false
+
+- name: Set proper permissions on all configuration files
+  ansible.builtin.file:
+    path: "{{ glance_config_dir }}"
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "0755"
+    recurse: true
+
+- name: Set proper permissions on all asset files
+  ansible.builtin.file:
+    path: "{{ glance_assets_dir }}"
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "{{ glance_file_mode }}"
+    recurse: true

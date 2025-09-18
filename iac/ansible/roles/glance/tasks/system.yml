@@ -1,0 +1,68 @@
+---
+# System preparation tasks for Glance
+
+- name: Create glance group
+  ansible.builtin.group:
+    name: "{{ glance_group }}"
+    state: present
+    system: true
+
+- name: Create glance user
+  ansible.builtin.user:
+    name: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    home: "{{ glance_home_dir }}"
+    shell: /bin/bash
+    system: true
+    create_home: true
+    state: present
+
+- name: Create glance directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    mode: "{{ glance_dir_mode }}"
+  loop:
+    - "{{ glance_install_dir }}"
+    - "{{ glance_config_dir }}"
+    - "{{ glance_assets_dir }}"
+    - "{{ glance_config_backup_dir }}"
+
+- name: Install required packages
+  ansible.builtin.package:
+    name:
+      - curl
+      - wget
+      - ca-certificates
+    state: present
+
+# Skip binary download - glance is already installed
+# - name: Download glance binary
+#   ansible.builtin.get_url:
+#     url: "{{ glance_binary_url }}"
+#     dest: "{{ glance_binary_path }}"
+#     owner: "{{ glance_user }}"
+#     group: "{{ glance_group }}"
+#     mode: "{{ glance_binary_mode }}"
+#     force: "{{ glance_auto_update }}"
+#     backup: "{{ glance_backup_before_update }}"
+#   notify: restart glance
+
+# - name: Ensure glance binary is executable
+#   ansible.builtin.file:
+#     path: "{{ glance_binary_path }}"
+#     owner: "{{ glance_user }}"
+#     group: "{{ glance_group }}"
+#     mode: "{{ glance_binary_mode }}"
+
+- name: Sync timezone with system
+  ansible.builtin.file:
+    src: /etc/localtime
+    dest: "{{ glance_home_dir }}/localtime"
+    owner: "{{ glance_user }}"
+    group: "{{ glance_group }}"
+    state: link
+    force: true
+  when: glance_sync_timezone
