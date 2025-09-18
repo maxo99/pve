@@ -1,7 +1,7 @@
 # Create lookup maps for dashboard URLs
 locals {
-  outputs_lxc_meta = yamldecode(file("${path.module}/config/meta.yml")).lxc
-  outputs_vm_meta  = yamldecode(file("${path.module}/config/meta.yml")).vm
+  outputs_lxc_meta = yamldecode(file("${local.config_path}/meta.yml")).lxc
+  outputs_vm_meta  = yamldecode(file("${local.config_path}/meta.yml")).vm
   
   lxc_dashboards = {
     for config in local.outputs_lxc_meta :

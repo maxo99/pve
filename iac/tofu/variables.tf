@@ -140,6 +140,12 @@ variable "vault_retry" {
   default     = 3
 }
 
+variable "config_path" {
+  description = "Absolute path to the config directory"
+  type        = string
+  default     = ""
+}
+
 # variable "default_lxc_template" {
 #   description = "Default LXC template for container creation"
 #   type        = string

@@ -11,5 +11,6 @@ locals {
   default_user        = var.default_user
 
   run_id = formatdate("YYYYMMDD-hhmm", timestamp())
-
+  
+  config_path = var.config_path != "" ? var.config_path : abspath("${path.root}/../config")
 }

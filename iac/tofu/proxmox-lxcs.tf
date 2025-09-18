@@ -1,6 +1,6 @@
 locals {
 
-  lxc_meta = yamldecode(file("${path.module}/config/meta.yml")).lxc
+  lxc_meta = yamldecode(file("${local.config_path}/meta.yml")).lxc
 
   lxc_configs = {
     for idx, config in local.lxc_meta :
@@ -21,6 +21,7 @@ module "lxcs" {
   lxc_index = each.value.lxc_idx
 
   # Common base parameters
+  config_path            = local.config_path
   ssh_public_key         = local.ssh_public_key
   ssh_private_key        = local.ssh_private_key
   ssh_private_key_path   = var.ssh_private_key_path

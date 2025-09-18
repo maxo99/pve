@@ -1,5 +1,5 @@
 locals {
-  vm_meta = yamldecode(file("${path.module}/config/meta.yml")).vm
+  vm_meta = yamldecode(file("${local.config_path}/meta.yml")).vm
 
   vm_configs = {
     for idx, config in local.vm_meta :

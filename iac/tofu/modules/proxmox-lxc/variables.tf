@@ -257,3 +257,8 @@ variable "run_id" {
   description = "Shared run ID for this deployment"
   type        = string
 }
+
+variable "config_path" {
+  description = "Path to the configuration directory"
+  type        = string
+}
