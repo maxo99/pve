@@ -22,5 +22,5 @@ mode: agent
 - If any additional files will require changes confirm before proceeding. 
 
 ### Output Expectations
-1. an entry in iac/tofu/config/meta.yml for the LXC entry
-2. an entry in iac/tofu/config/lxcs/scripts for custom hookscript content
+1. an entry in iac/config/meta.yml for the LXC entry
+2. an entry in iac/config/lxcs/hookscripts for custom hookscript content

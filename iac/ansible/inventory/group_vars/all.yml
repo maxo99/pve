@@ -30,3 +30,7 @@ pve_ansible_user_api_realm: "terraform-prov@pve" # API user with realm (same as 
 pve_ansible_token_id: "ansible-token"
 pve_admin_user_api_realm: "admin@pve"
 pve_admin_token_id: "admin-tf"
+
+#
+config_base_path: "{{ playbook_dir }}/../config"
+config_data_path: "{{ config_base_path }}/data"

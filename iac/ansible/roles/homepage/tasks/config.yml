@@ -21,7 +21,7 @@
 
 - name: Copy homepage configuration files from static configs
   ansible.builtin.copy:
-    src: "../../config/homepage/{{ item }}"
+    src: "{{ config_data_path }}/homepage/{{ item }}"
     dest: "{{ homepage_config_dir }}/{{ item }}"
     owner: "{{ homepage_user }}"
     group: "{{ homepage_group }}"
