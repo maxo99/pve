@@ -26,6 +26,9 @@
           abbr: ANS
 
 - Tools:
+    - Tempest Station:
+        - href: https://tempestwx.com/station/171878/
+          abbr: TEMPEST
     - Vault Documentation:
         - icon: vault.png
           href: https://developer.hashicorp.com/vault/docs
