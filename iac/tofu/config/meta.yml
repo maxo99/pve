@@ -276,6 +276,52 @@ lxc:
       - ca-certificates
     custom_scripts:
       - influxdb.sh
+  # 106 - Stirling PDF Editor
+  - container_name: stirling-pdf
+    container_id: 106
+    node_name: pve-01
+    description: Container LXC Stirling PDF Editor and Processor
+    dashboard: http://192.168.6.106:8080
+    tags:
+      - pdf
+      - editor
+      - document
+      - processing
+      - lxc
+    memory: 2048
+    cores: 2
+    disk_size: 8
+    ip_config:
+      ipv4_address: 192.168.6.106/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
+      - host_path: "/mnt/proxmox-personal"
+        container_path: "/mnt/personal"
+        options: bind
+    packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - automake
+      - autoconf
+      - libtool
+      - libleptonica-dev
+      - pkg-config
+      - zlib1g-dev
+      - make
+      - g++
+      - unpaper
+      - fonts-urw-base35
+      - qpdf
+      - poppler-utils
+    custom_scripts:
+      - stirling-pdf.sh
+
   # 110 - Docker Compose Stack
   - container_name: docker
     container_id: 110
