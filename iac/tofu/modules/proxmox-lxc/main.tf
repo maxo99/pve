@@ -110,3 +110,17 @@ resource "proxmox_virtual_environment_container" "lxc" {
   # }
 
 }
+
+# Task monitoring for hookscript completion
+resource "null_resource" "lxc_task_monitor" {
+  depends_on = [proxmox_virtual_environment_container.lxc]
+
+  provisioner "local-exec" {
+    command = "touch /tmp/tofu-start-$$-${var.container_id} && ${path.module}/scripts/monitor-lxc-task.sh ${var.container_id} ${var.node_name} 600"
+  }
+
+  triggers = {
+    container_id = var.container_id
+    run_id       = var.run_id
+  }
+}
