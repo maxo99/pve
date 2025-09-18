@@ -2,8 +2,8 @@
 # Homepage Widgets - Static Configuration
 
 - logo:
-    icon: https://github.com/gethomepage/homepage/raw/main/public/homepage.png
-
+    icon: https://github.com/walkxcode/Dashboard-Icons/tree/main/png/homepage.png
+    
 - greeting:
     text_size: xl
     text: "Welcome to your PVE Homelab"
@@ -19,7 +19,7 @@
     cpu: true
     memory: true
     disk: /
-    cputemp: true
+    cputemp: true+
     uptime: true
 
 - search:
