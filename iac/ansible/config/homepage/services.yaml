@@ -5,14 +5,32 @@
     - Cockpit:
         icon: cockpit.png
         href: https://192.168.6.101:9090/system
-    - Grafana:
+    - HomeAssistant:
+        icon: https://github.com/walkxcode/Dashboard-Icons/tree/main/png/home-assistant-alt.png
+        description: Need DHCP lookup 
+
+    - solo-Grafana:
         icon: grafana.png
         href: http://192.168.6.105:3000
+    - solo-InfluxDB:
+        icon: influxdb.png
+        href: http://192.168.6.203:8086
+    - docker-Grafana:
+        icon: grafana.png
+        href: http://192.168.6.110:3000
+    - docker-InfluxDB:
+        icon: influxdb.png
+        href: http://192.168.6.110:8086
+
+
 
 - Media:
     - Jellyfin:
         icon: jellyfin.png
         href: http://192.168.6.103:8096/
+    - Jellyseerr:
+        icon: https://github.com/walkxcode/Dashboard-Icons/tree/main/png/jellyseerr.png
+        href: http://192.168.6.104:5055
 
 
 - Infrastructure:
@@ -25,6 +43,13 @@
         icon: vault.png
         href: http://192.168.6.3:8200
         description: Secrets Management
+
+
+- Tools:
+    - Stirling PDF: 
+        icon: https://github.com/walkxcode/Dashboard-Icons/tree/main/png/stirling-pdf.png
+        href: http://192.168.6.106:8080/
+
 
 # - Monitoring:
 #     - Homepage Health:

@@ -253,7 +253,7 @@ lxc:
     container_id: 203
     node_name: pve-01
     description: Container LXC InfluxDB Time-series Database
-    dashboard: http://192.168.6.110:8086/
+    dashboard: http://192.168.6.203:8086/
     memory: 2048
     cores: 2
     disk_size: 8
