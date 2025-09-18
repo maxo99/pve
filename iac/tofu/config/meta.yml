@@ -4,6 +4,7 @@ vm:
     vm_id: 199
     node_name: pve-01
     description: Home Assistant OS VM
+    dashboard: http://{DHCP}:8123
     tags:
     - vm
     - haos

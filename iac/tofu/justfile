@@ -252,82 +252,8 @@ vm-fix-cloudinit name:
 
 #
 # VM Management and Debugging Recipes
-vm-create name:
-    #!/usr/bin/env bash
-    echo "=== Creating VM: {{name}} ==="
-    TF_LOG="${TF_LOG_LEVEL}" TF_LOG_PATH="${TF_LOG_PATH}" tofu apply -target="module.vms[\"{{name}}\"]" -auto-approve
-
-    if [ $? -eq 0 ]; then
-        echo "✅ VM creation completed successfully"
-        echo ""
-        echo "🔍 Checking VM status and cloud-init..."
-        
-        # Get VM details using script
-        VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
-        VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
-        
-        if [ -n "$VM_ID" ]; then
-            echo "📋 VM ID: $VM_ID"
-            
-            # Wait a moment for VM to start
-            echo "⏱️ Waiting 10 seconds for VM to initialize..."
-            sleep 10
-            
-            # Check VM status
-            echo "📊 VM Status:"
-            ./scripts/pve-ssh.sh "qm status $VM_ID"
-            
-            # Check guest agent (may take time to start)
-            echo ""
-            echo "🤖 Guest Agent Status:"
-            ./scripts/guest-agent.sh status "$VM_ID"
-            
-            # Get IP address if agent is working
-            if [ -n "$VM_IP" ]; then
-                echo ""
-                echo "🌐 Network Information:"
-                echo "  📍 IP Address: $VM_IP"
-            else
-                echo ""
-                echo "🌐 Network Information:"
-                echo "  ⏳ No IP assigned yet"
-            fi
-            
-            # Check cloud-init status
-            echo ""
-            echo "☁️ Cloud-init Status:"
-            if [ -n "$VM_IP" ]; then
-                ./scripts/cloud-init.sh status "$VM_IP"
-            else
-                echo "  ⏳ Cannot check cloud-init status (no IP yet)"
-            fi
-            
-            echo ""
-            echo "💡 Next steps:"
-            echo "  - Run 'just vm-cloudinit-check {{name}}' for detailed cloud-init verification"
-            echo "  - Run 'just vm-debug-ssh {{name}}' to test SSH connections once ready"
-            echo "  - Check guest agent status: 'just vm-status {{name}}'"
-        else
-            echo "❌ Could not get VM ID from Terraform output"
-        fi
-    else
-        echo "❌ VM creation failed"
-        exit 1
-    fi
 #
 #
-vm-destroy name:
-    #!/usr/bin/env bash
-    echo "=== Destroying VM: {{name}} ==="
-    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
-    if [ -n "$VM_ID" ]; then
-        echo "🛑 Stopping VM $VM_ID via Proxmox..."
-        ./scripts/pve-ssh.sh "qm stop $VM_ID" || true
-        echo "🗑️ Destroying VM $VM_ID via Proxmox..."
-        ./scripts/pve-ssh.sh "qm destroy $VM_ID --purge" || true
-    fi
-    echo "🧹 Removing from Terraform state..."
-    tofu destroy -target="module.vms[\"{{name}}\"]" -auto-approve
 
 #
 # Complete cleanup for VM - handles prevent_destroy lifecycle rules
@@ -530,10 +456,88 @@ pve-logs-multi:
 #
 pve-logs-lxc id name:
     ssh root@192.168.6.{{ id }} "journalctl -u {{ name }} -n 200 --no-pager"
-
+#
+#
 logs-homepage:
     just pve-logs-lxc 100 "homepage"
+#
+#
+tf-a-vm name:
+    #!/usr/bin/env bash
+    echo "=== Creating VM: {{name}} ==="
+    TF_LOG="${TF_LOG_LEVEL}" TF_LOG_PATH="${TF_LOG_PATH}" tofu apply -target="module.vms[\"{{name}}\"]" -auto-approve
 
+    if [ $? -eq 0 ]; then
+        echo "✅ VM creation completed successfully"
+        echo ""
+        echo "🔍 Checking VM status and cloud-init..."
+        
+        # Get VM details using script
+        VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+        VM_IP=$(./scripts/get-vm-details.sh get-ip "{{name}}")
+        
+        if [ -n "$VM_ID" ]; then
+            echo "📋 VM ID: $VM_ID"
+            
+            # Wait a moment for VM to start
+            echo "⏱️ Waiting 90 seconds for VM to initialize..."
+            sleep 90
+            
+            # Check VM status
+            echo "📊 VM Status:"
+            ./scripts/pve-ssh.sh "qm status $VM_ID"
+            
+            # Check guest agent (may take time to start)
+            echo ""
+            echo "🤖 Guest Agent Status:"
+            ./scripts/guest-agent.sh status "$VM_ID"
+            
+            # Get IP address if agent is working
+            if [ -n "$VM_IP" ]; then
+                echo ""
+                echo "🌐 Network Information:"
+                echo "  📍 IP Address: $VM_IP"
+            else
+                echo ""
+                echo "🌐 Network Information:"
+                echo "  ⏳ No IP assigned yet"
+            fi
+            
+            # Check cloud-init status
+            echo ""
+            echo "☁️ Cloud-init Status:"
+            if [ -n "$VM_IP" ]; then
+                ./scripts/cloud-init.sh status "$VM_IP"
+            else
+                echo "  ⏳ Cannot check cloud-init status (no IP yet)"
+            fi
+            
+            echo ""
+            echo "💡 Next steps:"
+            echo "  - Run 'just vm-cloudinit-check {{name}}' for detailed cloud-init verification"
+            echo "  - Run 'just vm-debug-ssh {{name}}' to test SSH connections once ready"
+            echo "  - Check guest agent status: 'just vm-status {{name}}'"
+        else
+            echo "❌ Could not get VM ID from Terraform output"
+        fi
+    else
+        echo "❌ VM creation failed"
+        exit 1
+    fi
+#
+tf-d-vm name:
+    #!/usr/bin/env bash
+    echo "=== Destroying VM: {{name}} ==="
+    VM_ID=$(./scripts/get-vm-details.sh "{{name}}" id)
+    if [ -n "$VM_ID" ]; then
+        echo "🛑 Stopping VM $VM_ID via Proxmox..."
+        ./scripts/pve-ssh.sh "qm stop $VM_ID" || true
+        echo "🗑️ Destroying VM $VM_ID via Proxmox..."
+        ./scripts/pve-ssh.sh "qm destroy $VM_ID --purge" || true
+    fi
+    echo "🧹 Removing from Terraform state..."
+    tofu destroy -target="module.vms[\"{{name}}\"]" -auto-approve
+#
 #
 # Run PCT exec 'cmd' for LXC 'id'
 pct-exec id cmd:

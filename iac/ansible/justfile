@@ -10,22 +10,22 @@ default:
 ansible-list:
     .venv/bin/ansible-inventory --list -v
 
-create_ssh_key_tprov:
-    echo 'Creating SSH key for terraform-prov@pve...'
-    mkdir -p ~/.ssh/homelab
-    ssh-keygen \
-        -t ed25519 \
-        -f ~/.ssh/homelab/terraform-prov \
-        -C "terraform-prov@pve"
+# create_ssh_key_tprov:
+#     echo 'Creating SSH key for terraform-prov@pve...'
+#     mkdir -p ~/.ssh/homelab
+#     ssh-keygen \
+#         -t ed25519 \
+#         -f ~/.ssh/homelab/terraform-prov \
+#         -C "terraform-prov@pve"
 
 
-create_ssh_key_root:
-    echo 'Creating SSH key for root user...'
-    mkdir -p ~/.ssh/homelab
-    ssh-keygen \
-        -t ed25519 \
-        -f ~/.ssh/homelab/root \
-        -C "root@pam"
+# create_ssh_key_root:
+#     echo 'Creating SSH key for root user...'
+#     mkdir -p ~/.ssh/homelab
+#     ssh-keygen \
+#         -t ed25519 \
+#         -f ~/.ssh/homelab/root \
+#         -C "root@pam"
 
 
 copy-ssh-key-to-proxmox_tprov:
@@ -133,9 +133,9 @@ vault-store-zfs-key:
 pve-setup:
     .venv/bin/ansible-playbook pve_setup.yml -b --ask-pass --ask-become-pass -v 
 
-pve-create-vm-template:
-    .venv/bin/ansible-playbook playbooks/create_vm_template.yml -b --ask-pass --ask-become-pass -v \
-    -e vault_token=${VAULT_TOKEN} -e vault_url=${VAULT_ADDR}
+# pve-create-vm-template:
+#     .venv/bin/ansible-playbook playbooks/create_vm_template.yml -b --ask-pass --ask-become-pass -v \
+#     -e vault_token=${VAULT_TOKEN} -e vault_url=${VAULT_ADDR}
 
 
 pve-create-zfs-mirror:

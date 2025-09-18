@@ -1,0 +1,1 @@
+https://forum.proxmox.com/threads/where-are-cluster-and-task-logs-stored-for-shipping-to-log-server.72718/

@@ -11,3 +11,8 @@
   - <https://luislogs.com/posts/monitor-proxmox-with-telegraf-influxdb-and-grafana/>
 - Prometheus
 - Victoria Metrics ?
+
+https://grafana.com/grafana/dashboards/15356-proxmox-cluster-flux/?ref=tcude.net
+
+## TODO: Add telegraf for lm_sensors ? 
+https://luislogs.com/posts/monitor-proxmox-with-telegraf-influxdb-and-grafana/

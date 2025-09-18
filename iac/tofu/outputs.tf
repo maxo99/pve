@@ -50,6 +50,7 @@ output "lxcs" {
       {
         name = name
         id   = lookup(local.lxc_ids, name, "")
+        deployed = try(lxc.run_id, "")
       },
       lookup(local.lxc_dashboards, name, "") != "" ? { dashboard = lookup(local.lxc_dashboards, name, "") } : {}
     )
