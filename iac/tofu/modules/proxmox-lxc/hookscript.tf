@@ -5,7 +5,7 @@ locals {
   # Read custom script files and prepare their content
   custom_script_contents = [
     for script_file in var.custom_scripts :
-    file("${path.root}/config/lxcs/scripts/${script_file}")
+    file("${path.root}/config/lxcs/hookscripts/${script_file}")
   ]
 }
 
