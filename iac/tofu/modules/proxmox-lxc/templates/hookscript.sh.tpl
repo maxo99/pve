@@ -13,7 +13,7 @@ fi
 # Container filesystem path
 CT_PATH="/var/lib/lxc/$VMID/rootfs"
 
-echo "Starting LXC container initialization for ${container_name} (ID: $VMID)"
+echo "Starting LXC container initialization for ${container_name} (ID: $VMID) at $(date +%s)"
 
 # Wait for container to be ready
 sleep 20
@@ -80,10 +80,16 @@ echo "Copying custom script to container..."
 lxc-attach -n "$VMID" -- /bin/bash -c "cat > /tmp/custom-init.sh" < /var/lib/vz/snippets/${container_id}-${container_name}-init.sh
 lxc_exec chmod +x /tmp/custom-init.sh
 
-%{ if generated_password != "" ~}
-# Replace password placeholders with actual password if applicable
-echo "Replacing password placeholders..."
-lxc_exec sed -i 's/PASSWORD_PLACEHOLDER/${generated_password}/g' /tmp/custom-init.sh
+%{ if generated_admin_password != "" ~}
+# Replace admin password placeholders with actual password if applicable
+echo "Replacing admin password placeholders..."
+lxc_exec sed -i 's/ADMIN_PASSWORD_PLACEHOLDER/${generated_admin_password}/g' /tmp/custom-init.sh
+%{ endif ~}
+
+%{ if generated_user_password != "" ~}
+# Replace user password placeholders with actual password if applicable
+echo "Replacing user password placeholders..."
+lxc_exec sed -i 's/PASSWORD_PLACEHOLDER/${generated_user_password}/g' /tmp/custom-init.sh
 %{ endif ~}
 
 echo "Executing custom script..."
@@ -99,10 +105,10 @@ echo "No custom initialization needed"
 # Clean up helpers file in container
 lxc_exec rm -f /tmp/lxc-helpers.sh
 
-echo "LXC initialization completed for ${container_name}"
+echo "LXC initialization completed for ${container_name} at $(date +%s)"
 
 # Create success marker
-echo "Success" > /tmp/${run_id}-lxc-$VMID-init.log
+echo "Success at $(date +%s)" > /tmp/${run_id}-lxc-$VMID-init.log
 
 # Final cleanup
 jobs -p | xargs -r kill 2>/dev/null || true

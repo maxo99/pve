@@ -53,6 +53,8 @@ module "lxcs" {
 
   # Password generation and Vault storage (optional)
   generate_admin_password = lookup(each.value, "generate_admin_password", false)
+  default_admin_password  = var.default_admin_password
+  default_user_password   = var.default_user_password
   admin_user              = lookup(each.value, "admin_user", "admin")
   vault_kv_path           = lookup(each.value, "vault_kv_path", "")
   ansible_playbook_path   = "../ansible"

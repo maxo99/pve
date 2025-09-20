@@ -41,10 +41,17 @@ variable "generate_admin_password" {
   type        = bool
   default     = false
 }
-variable "default_password" {
-  description = "Default password for the container"
+
+variable "default_admin_password" {
+  description = "Default password for administrative users (root, admin)"
   type        = string
-  default     = "P@ssw0rd"
+  sensitive   = true
+}
+
+variable "default_user_password" {
+  description = "Default password for application users (postgres, redis, etc.)"
+  type        = string
+  sensitive   = true
 }
 
 variable "admin_user" {
@@ -92,7 +99,7 @@ variable "network_bridge" {
 variable "mac_address" {
   description = "Custom MAC address for the container"
   type        = string
-  default     = null  # If null, it will be generated automatically
+  default     = null # If null, it will be generated automatically
 }
 
 variable "firewall" {
@@ -242,7 +249,7 @@ variable "mount_points" {
   type = list(object({
     host_path      = string
     container_path = string
-    options        = string  # Comma-separated options like "bind,ro" - will be parsed into individual parameters
+    options        = string # Comma-separated options like "bind,ro" - will be parsed into individual parameters
   }))
   default = []
 }

@@ -4,7 +4,7 @@ set -e
 
 VMID="$1"
 NODE="$2"
-TIMEOUT="${3:-600}"
+TIMEOUT="${3:-1200}"
 PVE_HOST="${4:-pve-01}"
 
 if [[ -z "$VMID" || -z "$NODE" ]]; then
@@ -54,11 +54,11 @@ while true; do
     # Check if task completed
     if ssh root@$PVE_HOST "tail -1 '$log_path' | grep -q '^TASK OK'" 2>/dev/null; then
         kill $tail_pid 2>/dev/null || true
-        echo "=== Task completed successfully ==="
+        echo "=== Task completed successfully at $(date -d @$current_time) ==="
         exit 0
     elif ssh root@$PVE_HOST "tail -1 '$log_path' | grep -q '^TASK ERROR'" 2>/dev/null; then
         kill $tail_pid 2>/dev/null || true
-        echo "=== Task failed ==="
+        echo "=== Task failed at $(date -d @$current_time) ==="
         exit 1
     fi
     

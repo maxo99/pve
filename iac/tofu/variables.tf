@@ -57,7 +57,18 @@ variable "ci_password" {
   description = "Cloud-Init password"
   type        = string
   sensitive   = true
+}
 
+variable "default_admin_password" {
+  description = "Default password for administrative users (root, admin)"
+  type        = string
+  sensitive   = true
+}
+
+variable "default_user_password" {
+  description = "Default password for application users (postgres, redis, etc.)"
+  type        = string
+  sensitive   = true
 }
 variable "ci_nameserver" {
   description = "Cloud-Init nameservers"
