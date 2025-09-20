@@ -80,10 +80,16 @@ echo "Copying custom script to container..."
 lxc-attach -n "$VMID" -- /bin/bash -c "cat > /tmp/custom-init.sh" < /var/lib/vz/snippets/${container_id}-${container_name}-init.sh
 lxc_exec chmod +x /tmp/custom-init.sh
 
-%{ if generated_password != "" ~}
-# Replace password placeholders with actual password if applicable
-echo "Replacing password placeholders..."
-lxc_exec sed -i 's/PASSWORD_PLACEHOLDER/${generated_password}/g' /tmp/custom-init.sh
+%{ if generated_admin_password != "" ~}
+# Replace admin password placeholders with actual password if applicable
+echo "Replacing admin password placeholders..."
+lxc_exec sed -i 's/ADMIN_PASSWORD_PLACEHOLDER/${generated_admin_password}/g' /tmp/custom-init.sh
+%{ endif ~}
+
+%{ if generated_user_password != "" ~}
+# Replace user password placeholders with actual password if applicable
+echo "Replacing user password placeholders..."
+lxc_exec sed -i 's/PASSWORD_PLACEHOLDER/${generated_user_password}/g' /tmp/custom-init.sh
 %{ endif ~}
 
 echo "Executing custom script..."

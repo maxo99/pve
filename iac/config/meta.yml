@@ -207,7 +207,6 @@ lxc:
     node_name: pve-01
     description: Container LXC PostgreSQL Database Server
     datastore_id: local-lvm
-    default_user: postgres
     memory: 2048
     cores: 2
     disk_size: 15
@@ -347,6 +346,34 @@ lxc:
       - ca-certificates
     custom_scripts:
       - glance.sh
+
+  # 108 - Linkwarden Bookmark Manager
+  - container_name: linkwarden
+    container_id: 108
+    node_name: pve-01
+    description: Container LXC Linkwarden Bookmark Manager
+    dashboard: http://192.168.6.108:3000
+    tags:
+      - bookmark
+      - linkwarden
+      - lxc
+    memory: 4096
+    cores: 2
+    disk_size: 12
+    ip_config:
+      ipv4_address: 192.168.6.108/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - make
+      - build-essential
+      - postgresql-client
+    custom_scripts:
+      - linkwarden.sh
 
   # 110 - Docker Compose Stack
   - container_name: docker

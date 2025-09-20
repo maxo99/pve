@@ -4,7 +4,7 @@ set -e
 
 VMID="$1"
 NODE="$2"
-TIMEOUT="${3:-600}"
+TIMEOUT="${3:-900}"
 PVE_HOST="${4:-pve-01}"
 
 if [[ -z "$VMID" || -z "$NODE" ]]; then

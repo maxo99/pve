@@ -431,6 +431,121 @@ setup_python_venv() {
     echo "Python virtual environment setup completed"
 }
 
+# Rust setup helper
+setup_rust() {
+    local crates=("$@")
+    
+    echo "Setting up Rust..."
+    
+    # Check if cargo is already available
+    if command -v cargo >/dev/null 2>&1; then
+        echo "Cargo already available"
+    else
+        # Install Rust
+        echo "Installing Rust..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+        
+        # Directly add the cargo bin directory to PATH
+        export PATH="/root/.cargo/bin:$PATH"
+        
+        # Verify cargo is now available
+        if ! command -v cargo >/dev/null 2>&1; then
+            echo "ERROR: cargo command not found after Rust installation"
+            echo "Checking cargo binary directly:"
+            ls -la "/root/.cargo/bin/cargo" 2>/dev/null || echo "cargo binary not found"
+            echo "Current PATH: $PATH"
+            return 1
+        fi
+        
+        echo "Cargo successfully installed and available"
+    fi
+    
+    # Install requested crates
+    if [ ${#crates[@]} -gt 0 ]; then
+        for crate in "${crates[@]}"; do
+            if ! command -v "$crate" >/dev/null 2>&1; then
+                echo "Installing Rust crate: $crate"
+                cargo install "$crate" || {
+                    echo "ERROR: Failed to install Rust crate '$crate'"
+                    return 1
+                }
+            else
+                echo "Rust crate '$crate' already installed"
+            fi
+        done
+    fi
+    
+    echo "Rust setup completed"
+}
+
+# PostgreSQL database creation helper
+create_postgresql_db() {
+    local pg_host="$1"
+    local db_name="$2"
+    local db_user="$3"
+    local db_pass="$4"
+    local pg_port="${5:-5432}"
+    local pg_admin_user="${6:-postgres}"
+    local pg_admin_pass="${7:-postgres}"
+    
+    echo "Creating PostgreSQL database '$db_name' on $pg_host:$pg_port..."
+    
+    # Install required packages if not present
+    install_if_missing postgresql-client netcat-openbsd
+    
+    # Test connection to PostgreSQL server
+    if ! nc -z "$pg_host" "$pg_port" 2>/dev/null; then
+        echo "ERROR: Cannot connect to PostgreSQL server at $pg_host:$pg_port"
+        return 1
+    fi
+    
+    # Create temporary .pgpass file for authentication
+    local temp_pgpass=$(mktemp)
+    echo "*:*:*:$pg_admin_user:$pg_admin_pass" > "$temp_pgpass"
+    chmod 600 "$temp_pgpass"
+    
+    # Set environment for psql
+    export PGPASSFILE="$temp_pgpass"
+    
+    # Check if database already exists
+    if psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name"; then
+        echo "Database '$db_name' already exists"
+    else
+        # Create database user if it doesn't exist
+        if ! psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$db_user'" | grep -q 1; then
+            echo "Creating user '$db_user'..."
+            psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -c "CREATE ROLE $db_user WITH LOGIN PASSWORD '$db_pass';" || {
+                echo "ERROR: Failed to create user '$db_user'"
+                rm -f "$temp_pgpass"
+                return 1
+            }
+        else
+            echo "User '$db_user' already exists"
+        fi
+        
+        # Create database
+        echo "Creating database '$db_name'..."
+        psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -c "CREATE DATABASE $db_name WITH OWNER $db_user ENCODING 'UTF8' TEMPLATE template0;" || {
+            echo "ERROR: Failed to create database '$db_name'"
+            rm -f "$temp_pgpass"
+            return 1
+        }
+        
+        # Set user privileges
+        psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -c "ALTER ROLE $db_user SET client_encoding TO 'utf8';" || true
+        psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -c "ALTER ROLE $db_user SET default_transaction_isolation TO 'read committed';" || true
+        psql -h "$pg_host" -p "$pg_port" -U "$pg_admin_user" -c "ALTER ROLE $db_user SET timezone TO 'UTC';" || true
+        
+        echo "Database '$db_name' created successfully"
+    fi
+    
+    # Cleanup
+    rm -f "$temp_pgpass"
+    unset PGPASSFILE
+    
+    return 0
+}
+
 # Build from source helper
 build_from_source() {
     local url="$1"

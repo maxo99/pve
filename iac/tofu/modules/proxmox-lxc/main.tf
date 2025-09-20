@@ -76,7 +76,7 @@ resource "proxmox_virtual_environment_container" "lxc" {
         var.ansible_ssh_public_key,
         var.proxmox_ssh_public_key
       ]
-      password = var.default_password
+      password = var.default_admin_password
     }
   }
 
