@@ -41,47 +41,16 @@ if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ] && systemctl is-active --quiet lin
     exit 0
 fi
 
-# Setup Node.js and Yarn
-if command -v setup_nodejs >/dev/null 2>&1; then
-    setup_nodejs "$NODE_MAJOR"
-    setup_pnpm "latest"
-else
-    # Fallback to manual setup
-    curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash -
-    apt-get install -y nodejs
-    npm install -g yarn@latest
-fi
+# Setup Node.js and package managers
+echo "Setting up Node.js and package managers..."
+setup_nodejs "$NODE_MAJOR"
+npm install -g yarn@latest
 
 # Setup Rust for monolith
-if command -v setup_rust >/dev/null 2>&1; then
-    setup_rust "monolith"
-else
-    # Fallback to manual setup
-    echo "Installing Rust (fallback method)..."
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-    
-    # Directly add cargo to PATH
-    export PATH="/root/.cargo/bin:$PATH"
-    
-    # Verify cargo is available
-    if ! command -v cargo >/dev/null 2>&1; then
-        echo "ERROR: cargo command not found"
-        echo "Checking cargo binary directly:"
-        ls -la "/root/.cargo/bin/cargo" 2>/dev/null || echo "cargo binary not found"
-        exit 1
-    fi
-    
-    # Install monolith
-    echo "Installing monolith crate..."
-    cargo install monolith
-fi
+setup_rust "monolith"
 
 # Setup directories
-if command -v ensure_directory >/dev/null 2>&1; then
-    ensure_directory "$APP_DIR" "root:root" "755"
-else
-    mkdir -p "$APP_DIR"
-fi
+ensure_directory "$APP_DIR" "root:root" "755"
 
 # Generate database credentials
 DB_PASS="$(openssl rand -base64 18 | tr -d '/' | cut -c1-13)"
@@ -89,32 +58,24 @@ SECRET_KEY="$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)"
 
 # Create database on external PostgreSQL
 echo "Setting up database on external PostgreSQL..."
-if command -v create_postgresql_db >/dev/null 2>&1; then
-    create_postgresql_db "$PG_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" "$PG_PORT" "$PG_ADMIN_USER" "$PG_ADMIN_PASS"
+create_postgresql_db "$PG_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" "$PG_PORT" "$PG_ADMIN_USER" "$PG_ADMIN_PASS"
+
+# Verify database connection before proceeding
+echo "Verifying database connection..."
+if PGPASSWORD="$DB_PASS" psql -h "$PG_HOST" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then
+    echo "Database connection successful"
 else
-    # Fallback: Direct connection with proper credentials
-    echo "Creating database and user on PostgreSQL container..."
-    
-    # Test connection first
-    if ! PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -U "$PG_ADMIN_USER" -d postgres -c "SELECT 1;" >/dev/null 2>&1; then
-        echo "ERROR: Cannot connect to PostgreSQL at $PG_HOST with user $PG_ADMIN_USER"
-        echo "Please verify PostgreSQL container is running and password is correct"
+    echo "ERROR: Cannot connect to database with linkwarden credentials"
+    echo "Testing with admin credentials..."
+    if PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d postgres -c "SELECT 1;" >/dev/null 2>&1; then
+        echo "Admin connection works - recreating user..."
+        PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d postgres -c "DROP ROLE IF EXISTS $DB_USER;"
+        PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d postgres -c "CREATE ROLE $DB_USER WITH LOGIN PASSWORD '$DB_PASS';"
+        PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+    else
+        echo "ERROR: Admin connection also failed"
         exit 1
     fi
-    
-    # Create database user and database
-    echo "Creating database user '$DB_USER'..."
-    PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -U "$PG_ADMIN_USER" -d postgres -c "CREATE ROLE $DB_USER WITH LOGIN PASSWORD '$DB_PASS';" || echo "User may already exist"
-    
-    echo "Creating database '$DB_NAME'..."
-    PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -U "$PG_ADMIN_USER" -d postgres -c "CREATE DATABASE $DB_NAME WITH OWNER $DB_USER ENCODING 'UTF8' TEMPLATE template0;" || echo "Database may already exist"
-    
-    echo "Setting database permissions..."
-    PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -U "$PG_ADMIN_USER" -d postgres -c "ALTER ROLE $DB_USER SET client_encoding TO 'utf8';"
-    PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -U "$PG_ADMIN_USER" -d postgres -c "ALTER ROLE $DB_USER SET default_transaction_isolation TO 'read committed';"
-    PGPASSWORD="$PG_ADMIN_PASS" psql -h "$PG_HOST" -U "$PG_ADMIN_USER" -d postgres -c "ALTER ROLE $DB_USER SET timezone TO 'UTC';"
-    
-    echo "Database setup completed successfully"
 fi
 
 # Store credentials
@@ -157,47 +118,38 @@ DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@${PG_HOST}:${PG_PORT}/${DB_NAME}
 EOF
 
 # Generate Prisma client and build
+export NODE_OPTIONS="--max-old-space-size=3072"
+export NEXT_TELEMETRY_DISABLED=1
 yarn prisma:generate
 yarn web:build
 yarn prisma:deploy
 
 # Create/update systemd service
-SERVICE_CONTENT="[Unit]
+create_systemd_service "linkwarden" "[Unit]
 Description=Linkwarden Bookmark Manager
 After=network.target
 
 [Service]
 Type=exec
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+Environment=NODE_OPTIONS=--max-old-space-size=3072
+Environment=NEXT_TELEMETRY_DISABLED=1
 WorkingDirectory=$APP_DIR
-ExecStart=/usr/bin/yarn concurrently:start
+ExecStart=yarn concurrently:start
 Restart=always
 RestartSec=10
-Environment=NODE_ENV=production
 
 [Install]
 WantedBy=multi-user.target"
 
-if command -v create_systemd_service >/dev/null 2>&1; then
-    create_systemd_service "linkwarden" "$SERVICE_CONTENT"
-else
-    echo "$SERVICE_CONTENT" > /etc/systemd/system/linkwarden.service
-    systemctl daemon-reload
-    systemctl enable linkwarden
-fi
-
 # Track version and start service
 echo "$LATEST_VERSION" > "$VERSION_FILE"
-
-if command -v ensure_service_running >/dev/null 2>&1; then
-    ensure_service_running "linkwarden"
-else
-    systemctl start linkwarden
-fi
+ensure_service_running "linkwarden"
 
 # Cleanup
 rm -rf ~/.cargo/registry ~/.cargo/git ~/.cargo/.package-cache ~/.rustup
-rm -rf /root/.cache/yarn
+rm -rf /root/.cache/yarn /root/.npm /root/.cache/npm
 rm -rf "$APP_DIR/.next/cache"
 
 # Wait and show status
