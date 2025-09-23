@@ -20,6 +20,7 @@ glance_env_vars:
   GLANCE_ASSETS_DIR: "{{ glance_assets_dir }}"
   GLANCE_PORT: "{{ glance_port }}"
   HOME: "{{ glance_home_dir }}"
+  LINKWARDEN_API_KEY: "{{ glance_linkwarden_api_key }}"
 
 # Binary configuration
 glance_version: "latest"  # Can be "latest" or specific version

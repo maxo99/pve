@@ -38,3 +38,6 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ansible project secret file
+**/all.secret.yml
