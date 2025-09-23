@@ -6,8 +6,8 @@ vm:
     description: Home Assistant OS VM
     dashboard: http://{DHCP}:8123
     tags:
-    - vm
-    - haos
+      - vm
+      - haos
     memory: 4096
     cores: 4
     disk_size: 32
@@ -376,15 +376,17 @@ lxc:
       - linkwarden.sh
 
   # 110 - Docker Compose Stack
-  - container_name: docker
+  - container_name: docker-grafanainfluxdb
     container_id: 110
     node_name: pve-01
-    description: Container LXC Docker Compose Stack Runner
+    description: Grafana InfluxDB (Docker Compose)
     tags:
       - docker
       - compose
       - containers
       - lxc
+      - grafana
+      - influxdb
     memory: 4096
     cores: 4
     disk_size: 20
@@ -396,9 +398,6 @@ lxc:
     mount_points:
       - host_path: "/mnt/proxmox-shared"
         container_path: "/mnt/shared"
-        options: bind
-      - host_path: "/mnt/proxmox-personal"
-        container_path: "/mnt/personal"
         options: bind
       - host_path: "/tank"
         container_path: "/mnt/tank"
@@ -413,12 +412,10 @@ lxc:
       - lsb-release
       - apt-transport-https
       - software-properties-common
-      - python3-requests 
+      - python3-requests
     feature_nesting: true
     custom_scripts:
       - docker.sh
-
-
 
   # # 204 - MongoDB Database
   # - container_name: mongodb
@@ -443,4 +440,3 @@ lxc:
   #     - ca-certificates
   #   custom_scripts:
   #     - mongodb.sh
-
