@@ -17,9 +17,11 @@ if [ ! -f "$BACKUP_CONF" ]; then
 fi
 
 # Configure Redis to bind to all interfaces (idempotent)
-if grep -q "^bind 127.0.0.1" "$REDIS_CONF"; then
+if grep -q "^bind 127.0.0.1" "$REDIS_CONF" || grep -q "^# bind 127.0.0.1" "$REDIS_CONF"; then
     echo "Configuring Redis to bind to all interfaces..."
-    sed -i 's/^bind 127.0.0.1 ::1$/bind 0.0.0.0/' "$REDIS_CONF"
+    # Handle both commented and uncommented bind lines
+    sed -i 's/^bind 127.0.0.1.*$/bind 0.0.0.0/' "$REDIS_CONF"
+    sed -i 's/^# bind 127.0.0.1.*$/bind 0.0.0.0/' "$REDIS_CONF"
     RESTART_NEEDED=true
 else
     echo "Redis already configured to bind to all interfaces"
@@ -29,12 +31,14 @@ fi
 if ! grep -q "^requirepass" "$REDIS_CONF"; then
     echo "Setting Redis password..."
     # Replace placeholder with actual password if provided
-    if command -v replace_password_placeholder >/dev/null 2>&1; then
-        PASSWORD=$(replace_password_placeholder "PASSWORD_PLACEHOLDER" "PASSWORD_PLACEHOLDER")
+    PASSWORD="PASSWORD_PLACEHOLDER"
+    # Find and replace the commented requirepass line
+    if grep -q "^# requirepass foobared" "$REDIS_CONF"; then
+        sed -i "s/^# requirepass foobared$/requirepass $PASSWORD/" "$REDIS_CONF"
     else
-        PASSWORD="PASSWORD_PLACEHOLDER"
+        # Fallback: add requirepass line if not found
+        echo "requirepass $PASSWORD" >> "$REDIS_CONF"
     fi
-    sed -i "s/^# requirepass foobared$/requirepass $PASSWORD/" "$REDIS_CONF"
     RESTART_NEEDED=true
 else
     echo "Redis password already configured"
@@ -42,11 +46,16 @@ fi
 
 # Start and enable Redis
 if command -v ensure_service_running >/dev/null 2>&1; then
+    if [ "${RESTART_NEEDED:-false}" = "true" ]; then
+        systemctl restart redis-server
+    fi
     ensure_service_running "redis-server"
 else
     systemctl enable redis-server
     if [ "${RESTART_NEEDED:-false}" = "true" ] || ! systemctl is-active --quiet redis-server; then
         systemctl restart redis-server
+    else
+        systemctl start redis-server
     fi
 fi
 
