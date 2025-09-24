@@ -1,16 +1,23 @@
 
 
-resource "proxmox_virtual_environment_download_file" "ubuntu_container_template" {
-  content_type        = "vztmpl"
-  datastore_id        = "local"
-  node_name           = "pve-01"
-  url                 = "http://download.proxmox.com/images/system/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
-  overwrite           = true
-  overwrite_unmanaged = true
+# Dynamic template URLs based on OS type
+locals {
+  template_urls = {
+    ubuntu = "http://download.proxmox.com/images/system/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    debian = "http://download.proxmox.com/images/system/debian-12-standard_12.2-1_amd64.tar.zst"
+  }
+  
+  selected_os_type = var.template_os_type != null ? var.template_os_type : "ubuntu"
+  template_url = local.template_urls[local.selected_os_type]
 }
 
-locals {
-  ubuntu_template_id = proxmox_virtual_environment_download_file.ubuntu_container_template.id
+resource "proxmox_virtual_environment_download_file" "container_template" {
+  content_type = "vztmpl"
+  datastore_id = "local"
+  node_name    = var.node_name
+  url          = local.template_url
+  # overwrite           = true
+  # overwrite_unmanaged = true
 }
 
 resource "proxmox_virtual_environment_container" "lxc" {
@@ -24,8 +31,8 @@ resource "proxmox_virtual_environment_container" "lxc" {
   hook_script_file_id = proxmox_virtual_environment_file.lxc_hook_script.id
 
   operating_system {
-    template_file_id = var.template_id != null ? var.template_id : local.ubuntu_template_id
-    type             = var.template_os_type != null ? var.template_os_type : "ubuntu"
+    template_file_id = var.template_id != null ? var.template_id : proxmox_virtual_environment_download_file.container_template.id
+    type             = local.selected_os_type
   }
 
 
