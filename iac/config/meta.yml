@@ -201,80 +201,6 @@ lxc:
     custom_scripts:
       - grafana.sh
 
-  # 201 - PostgreSQL Database Server
-  - container_name: postgresql
-    container_id: 201
-    node_name: pve-01
-    description: Container LXC PostgreSQL Database Server
-    datastore_id: local-lvm
-    memory: 2048
-    cores: 2
-    disk_size: 15
-    ip_config:
-      ipv4_address: 192.168.6.201/22
-      gateway: 192.168.4.1
-    tags:
-      - db
-      - postgresql
-      - sql
-      - lxc
-    packages:
-      - postgresql
-      - postgresql-contrib
-      - postgresql-client
-    custom_scripts:
-      - postgresql.sh
-
-  # 202 - Redis Cache Server
-  - container_name: redis
-    container_id: 202
-    description: Container LXC Redis Cache Server
-    tags:
-      - cache
-      - redis
-      - nosql
-      - lxc
-    memory: 1024
-    cores: 1
-    disk_size: 8
-    admin_user: redis
-    ip_config:
-      ipv4_address: 192.168.6.202/22
-      gateway: 192.168.4.1
-    packages:
-      - redis-server
-      - redis-tools
-    custom_scripts:
-      - redis.sh
-
-  # 203 - InfluxDB Time-series Database
-  - container_name: influxdb
-    container_id: 203
-    node_name: pve-01
-    description: Container LXC InfluxDB Time-series Database
-    dashboard: http://192.168.6.203:8086/
-    memory: 2048
-    cores: 2
-    disk_size: 8
-    ip_config:
-      ipv4_address: 192.168.6.203/22
-      gateway: 192.168.4.1
-    datastore_id: local-lvm
-    tags:
-      - database
-      - influxdb
-      - lxc
-    mount_points:
-      - host_path: "/mnt/proxmox-shared"
-        container_path: "/mnt/shared"
-        options: bind
-    packages:
-      - curl
-      - gpg
-      - gnupg
-      - ca-certificates
-    custom_scripts:
-      - influxdb.sh
   # 106 - Stirling PDF Editor
   - container_name: stirling-pdf
     container_id: 106
@@ -347,7 +273,7 @@ lxc:
     custom_scripts:
       - glance.sh
 
-    # 108 - Linkwarden Bookmark Manager
+  # 108 - Linkwarden Bookmark Manager
   - container_name: linkwarden
     container_id: 108
     node_name: pve-01
@@ -457,7 +383,35 @@ lxc:
     custom_scripts:
       - docker.sh
 
-    # 200 - Proxmox Backup Server
+  # 111 - Frigate NVR
+  - container_name: frigate
+    container_id: 111
+    node_name: pve-01
+    description: Container LXC Frigate NVR
+    dashboard: http://192.168.6.111:5000
+    tags:
+      - frigate
+      - nvr
+      - lxc
+    memory: 8192
+    cores: 4
+    disk_size: 32
+    ip_config:
+      ipv4_address: 192.168.6.111/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    template_os_type: debian
+    unprivileged: false
+    feature_nesting: true
+    mount_points:
+      - host_path: "/tank"
+        container_path: "/tank"
+        options: bind
+    packages: []
+    custom_scripts:
+      - frigate.sh
+
+  # 200 - Proxmox Backup Server
   - container_name: proxmox-backup-server
     container_id: 200
     node_name: pve-01
@@ -488,6 +442,82 @@ lxc:
       - ca-certificates
     custom_scripts:
       - proxmox-backup-server.sh
+
+  # 201 - PostgreSQL Database Server
+  - container_name: postgresql
+    container_id: 201
+    node_name: pve-01
+    description: Container LXC PostgreSQL Database Server
+    datastore_id: local-lvm
+    memory: 2048
+    cores: 2
+    disk_size: 15
+    ip_config:
+      ipv4_address: 192.168.6.201/22
+      gateway: 192.168.4.1
+    tags:
+      - db
+      - postgresql
+      - sql
+      - lxc
+    packages:
+      - postgresql
+      - postgresql-contrib
+      - postgresql-client
+    custom_scripts:
+      - postgresql.sh
+
+  # 202 - Redis Cache Server
+  - container_name: redis
+    container_id: 202
+    description: Container LXC Redis Cache Server
+    tags:
+      - cache
+      - redis
+      - nosql
+      - lxc
+    memory: 1024
+    cores: 1
+    disk_size: 8
+    admin_user: redis
+    ip_config:
+      ipv4_address: 192.168.6.202/22
+      gateway: 192.168.4.1
+    packages:
+      - redis-server
+      - redis-tools
+    custom_scripts:
+      - redis.sh
+
+  # 203 - InfluxDB Time-series Database
+  - container_name: influxdb
+    container_id: 203
+    node_name: pve-01
+    description: Container LXC InfluxDB Time-series Database
+    dashboard: http://192.168.6.203:8086/
+    memory: 2048
+    cores: 2
+    disk_size: 8
+    ip_config:
+      ipv4_address: 192.168.6.203/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    tags:
+      - database
+      - influxdb
+      - lxc
+    mount_points:
+      - host_path: "/mnt/proxmox-shared"
+        container_path: "/mnt/shared"
+        options: bind
+    packages:
+      - curl
+      - gpg
+      - gnupg
+      - ca-certificates
+    custom_scripts:
+      - influxdb.sh
+
 
   # # 204 - MongoDB Database
   # - container_name: mongodb

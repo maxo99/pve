@@ -16,8 +16,8 @@ resource "proxmox_virtual_environment_download_file" "container_template" {
   datastore_id = "local"
   node_name    = var.node_name
   url          = local.template_url
-  # overwrite           = true
-  # overwrite_unmanaged = true
+  overwrite           = true
+  overwrite_unmanaged = true
 }
 
 resource "proxmox_virtual_environment_container" "lxc" {
