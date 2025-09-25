@@ -1,0 +1,19 @@
+---
+# Manage Frigate configuration file
+
+- name: Ensure config directory exists
+  ansible.builtin.file:
+    path: "{{ frigate_config_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Frigate config (minimal)
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: "{{ frigate_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: frigate_config_result
+  when: frigate_manage_config
+

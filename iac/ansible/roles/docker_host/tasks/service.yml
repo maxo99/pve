@@ -1,0 +1,9 @@
+---
+# Manage docker service
+
+- name: Enable and start docker service
+  ansible.builtin.systemd:
+    name: docker
+    enabled: "{{ docker_host_service_enabled }}"
+    state: "{{ docker_host_service_state }}"
+

@@ -1,0 +1,21 @@
+---
+# docker_host main tasks
+
+- name: "Assert Debian-like platform (basic guard)"
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: "docker_host role currently supports only Debian family"
+  when: docker_host_manage
+
+- name: Include repository setup
+  ansible.builtin.include_tasks: repo.yml
+  when: docker_host_manage and docker_host_repo_enabled
+
+- name: Include engine install tasks
+  ansible.builtin.include_tasks: install.yml
+  when: docker_host_manage
+
+- name: Include service management tasks
+  ansible.builtin.include_tasks: service.yml
+  when: docker_host_manage

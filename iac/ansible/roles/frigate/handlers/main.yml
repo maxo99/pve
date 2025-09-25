@@ -1,0 +1,8 @@
+---
+# Frigate handlers (reserved for future use)
+
+- name: restart frigate
+  ansible.builtin.shell: "docker compose up -d"
+  args:
+    chdir: "{{ frigate_install_dir }}"
+  when: frigate_restart_on_change

@@ -1,0 +1,35 @@
+# Frigate docker-compose (managed by Ansible)
+# NOTE: Systemd unit already created by initial provisioning script.
+# This template focuses on service definition only.
+
+services:
+  frigate:
+    image: {{ frigate_image }}
+    container_name: frigate
+    restart: unless-stopped
+    network_mode: host
+    shm_size: "64mb"
+    environment:
+      - TZ={{ ansible_facts['timezone'] | default('UTC') }}
+    volumes:
+      - {{ frigate_config_dir }}:/config:rw
+      - {{ frigate_media_dir }}:/media/frigate:rw
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 100000000
+    privileged: false
+    # Hardware acceleration examples (commented until enabled)
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # environment:
+    #   LIBVA_DRIVER_NAME=iHD
+    #   FFmpeg hwaccel args handled via Frigate config detectors
+
+# Future extension: add go2rtc as sidecar if needed
+#  go2rtc:
+#    image: alexxit/go2rtc:latest
+#    restart: unless-stopped
+#    network_mode: host
+#    volumes:
+#      - {{ frigate_config_dir }}:/config

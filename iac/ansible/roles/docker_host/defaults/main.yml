@@ -1,0 +1,21 @@
+---
+# Defaults for docker_host role
+# Focus: install engine + compose plugin (Debian); minimal footprint
+
+# Whether to manage Docker installation
+# (Kept simple per request; always true when role invoked)
+docker_host_manage: true
+
+# Channel & version pinning placeholders (not enforced yet)
+docker_host_package_state: present  # could be 'latest' later
+
+# Whether to enable and start docker service
+docker_host_service_enabled: true
+docker_host_service_state: started
+
+# Additional packages (extendable by caller)
+docker_host_extra_packages: []
+
+# Repo URL components (for Debian based only at present)
+docker_host_repo_enabled: true
+

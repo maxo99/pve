@@ -1,0 +1,51 @@
+---
+# Manage docker compose file and optionally restart stack
+
+- name: Ensure install directory exists
+  ansible.builtin.file:
+    path: "{{ frigate_install_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure media directory exists
+  ansible.builtin.file:
+    path: "{{ frigate_media_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ frigate_compose_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: frigate_compose_result
+  when: frigate_manage_compose
+
+- name: Pull image (optional)
+  ansible.builtin.shell: "docker compose pull --quiet"
+  args:
+    chdir: "{{ frigate_install_dir }}"
+  when: frigate_pull_image | bool
+  register: frigate_pull_result
+  changed_when: frigate_pull_result.rc == 0 and (frigate_pull_result.stdout | length > 0 or frigate_pull_result.stderr | length > 0)
+
+- name: Restart stack if changed
+  ansible.builtin.shell: "docker compose up -d"
+  args:
+    chdir: "{{ frigate_install_dir }}"
+  when: frigate_restart_on_change and (
+          (frigate_compose_result is defined and frigate_compose_result.changed) or
+          (frigate_config_result is defined and frigate_config_result.changed) or
+          (frigate_pull_image and (frigate_pull_result is defined))
+        )
+  register: frigate_up_result
+  changed_when: frigate_up_result.rc == 0
+
+- name: Summarize changes
+  ansible.builtin.debug:
+    msg: >-
+      Frigate updates => config_changed={{ frigate_config_result.changed | default(false) }},
+      compose_changed={{ frigate_compose_result.changed | default(false) }},
+      image_pulled={{ frigate_pull_image | bool }}

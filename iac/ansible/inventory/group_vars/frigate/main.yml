@@ -1,0 +1,28 @@
+---
+# Frigate camera configuration
+
+# Disable dummy camera since we're adding real cameras
+frigate_enable_dummy_camera: false
+
+# Camera credentials - using admin credentials for RTSP
+frigate_camera_user: admin
+frigate_camera_password: "P@ssw0rd"
+
+# go2rtc stream configuration
+frigate_go2rtc_streams:
+  # Front camera substream (lower resolution for detection)
+  front1-sub: "rtsp://{{ frigate_camera_user }}:{{ frigate_camera_password }}@192.168.6.129/cam/realmonitor?channel=1&subtype=1"
+
+# Camera configuration
+frigate_cameras:
+  front1:
+    ffmpeg:
+      inputs:
+        - path: "rtsp://127.0.0.1:8554/front1-sub?video=copy"
+          input_args: preset-rtsp-restream
+          roles:
+            - detect
+    detect:
+      enabled: true
+      width: 640
+      height: 480

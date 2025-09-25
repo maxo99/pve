@@ -202,6 +202,7 @@ services:
     shm_size: "64mb"
     environment:
       - TZ=${TZ_VAL}
+      - FRIGATE_CONFIG_BACKUP=false
     volumes:
       - /etc/frigate:/config:rw
       - /tank/frigate:/media/frigate:rw

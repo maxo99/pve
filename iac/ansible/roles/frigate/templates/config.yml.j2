@@ -1,0 +1,68 @@
+############################################################
+# Frigate minimal configuration (managed by Ansible)
+# Provides required structure; extend via variables.
+############################################################
+
+mqtt:
+  enabled: {{ frigate_mqtt_enabled | bool | lower }}
+{% if frigate_mqtt_enabled %}
+  host: "{{ frigate_mqtt_host }}"
+  user: "{{ frigate_mqtt_user }}"
+  password: "{{ frigate_mqtt_password }}"
+{% else %}
+  # host: {{ frigate_mqtt_host | default('') }}
+  # user: {{ frigate_mqtt_user | default('') }}
+  # password: {{ frigate_mqtt_password | default('') }}
+{% endif %}
+
+detectors:
+{% if frigate_detectors | length == 0 %}
+  cpu1:
+    type: cpu
+{% else %}
+{% for name, cfg in frigate_detectors.items() %}
+  {{ name }}:
+{% for k,v in cfg.items() %}    {{ k }}: {{ v }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+# Required field (can be empty mapping). Add cameras via frigate_cameras.
+{% if frigate_cameras | length == 0 %}
+{% if frigate_enable_dummy_camera %}
+cameras:
+  dummy:
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:554/does_not_exist
+          roles:
+            - detect
+    detect:
+      enabled: false
+{% else %}
+cameras: {}
+{% endif %}
+{% else %}
+cameras:
+{% for cam_name, cam_cfg in frigate_cameras.items() %}
+  {{ cam_name }}:
+{{ cam_cfg | to_nice_yaml(indent=2) | indent(4, true) }}
+{% endfor %}
+{% endif %}
+
+go2rtc:
+  streams:
+{% for stream_name, stream_url in frigate_go2rtc_streams.items() %}
+    {{ stream_name }}: "{{ stream_url }}"
+{% endfor %}
+
+# Hardware acceleration placeholders (uncomment & adjust when enabling HW accel)
+# Example VAAPI detector:
+# detectors:
+#   vaapi:
+#     type: vaapi
+#     hwaccel_args: -hwaccel vaapi
+
+version: {{ frigate_config_version | default('0.14') }}
+
+

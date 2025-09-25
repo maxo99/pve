@@ -1,0 +1,23 @@
+---
+# Simple non-critical health check (optional)
+
+- name: Wait briefly before health check
+  ansible.builtin.pause:
+    seconds: 2
+
+- name: Perform HTTP health check
+  ansible.builtin.uri:
+    url: "{{ frigate_health_check_url }}"
+    method: GET
+    return_content: false
+    status_code: 200
+  register: frigate_health_raw
+  retries: "{{ frigate_health_check_retries }}"
+  delay: "{{ frigate_health_check_delay }}"
+  until: frigate_health_raw is succeeded
+  failed_when: false  # Non-critical
+  changed_when: false
+
+- name: Report health check status
+  ansible.builtin.debug:
+    msg: "Health check success={{ frigate_health_raw is succeeded }} status={{ frigate_health_raw.status | default('n/a') }}"

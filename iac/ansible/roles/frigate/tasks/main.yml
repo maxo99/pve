@@ -1,0 +1,19 @@
+---
+# Frigate role main tasks (configuration only)
+
+- name: Include validation
+  ansible.builtin.include_tasks: validate.yml
+  tags: [frigate, validate]
+
+- name: Include config tasks
+  ansible.builtin.include_tasks: config.yml
+  tags: [frigate, config]
+
+- name: Include compose tasks
+  ansible.builtin.include_tasks: frigate-compose.yml
+  tags: [frigate, compose]
+
+- name: Include health check
+  ansible.builtin.include_tasks: health_check.yml
+  when: frigate_health_check_enabled
+  tags: [frigate, health]

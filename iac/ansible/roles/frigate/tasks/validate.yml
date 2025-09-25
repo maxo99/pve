@@ -1,0 +1,19 @@
+---
+# Basic variable validation
+
+- name: Validate required paths and image
+  ansible.builtin.assert:
+    that:
+      - frigate_install_dir | length > 0
+      - frigate_config_dir | length > 0
+      - frigate_compose_file | length > 0
+      - frigate_image | length > 0
+    fail_msg: "Frigate required variables not properly defined"
+
+- name: Show configuration summary
+  ansible.builtin.debug:
+    msg:
+      - "Config file: {{ frigate_config_file }}"
+      - "Compose file: {{ frigate_compose_file }}"
+      - "Image: {{ frigate_image }} (pull: {{ frigate_pull_image }})"
+      - "Restart on change: {{ frigate_restart_on_change }}"

@@ -1,0 +1,25 @@
+---
+# Frigate configuration management playbook
+# Usage examples:
+#   ansible-playbook frigate.yml -l frigate
+#   ansible-playbook frigate.yml -t frigate,config
+#   ansible-playbook frigate.yml -e frigate_pull_image=true
+
+- name: Manage Frigate NVR configuration (config-only scope)
+  hosts: frigate
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: frigate
+      tags: [frigate]
+
+  post_tasks:
+    - name: Display Frigate summary
+      ansible.builtin.debug:
+        msg:
+          - "Compose: {{ frigate_compose_file }}"
+          - "Config: {{ frigate_config_file }}"
+          - "Image: {{ frigate_image }}"
+          - "Restart on change: {{ frigate_restart_on_change }}"
+          - "Pull image: {{ frigate_pull_image }}"

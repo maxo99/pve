@@ -1,0 +1,59 @@
+---
+# Frigate role defaults (configuration-only scope)
+
+frigate_service_name: frigate-compose  # existing systemd unit created by hook script
+frigate_install_dir: /opt/frigate
+frigate_config_dir: /etc/frigate
+frigate_media_dir: /tank/frigate
+frigate_compose_file: "{{ frigate_install_dir }}/docker-compose.yml"
+frigate_config_file: "{{ frigate_config_dir }}/config.yml"
+
+# Image version pinned (matching current script's VERSION_TAG minus leading 'v')
+frigate_image_tag: "0.14.1"
+frigate_image: "ghcr.io/blakeblackshear/frigate:{{ frigate_image_tag }}"
+
+# Control pulling image (disabled by default per decision)
+frigate_pull_image: false
+
+# Whether to render/overwrite compose + config each run
+frigate_manage_compose: true
+frigate_manage_config: true
+
+# Restart container (docker compose up -d) when compose or config changed
+frigate_restart_on_change: true
+
+# Health check (non-blocking disabled by default due to slow starts)
+frigate_health_check_enabled: false
+frigate_health_check_url: "http://127.0.0.1:5000"
+frigate_health_check_retries: 5
+frigate_health_check_delay: 3
+
+# Minimal config elements
+frigate_mqtt_enabled: false
+# Placeholder commented MQTT variables for future use
+frigate_mqtt_host: ""
+frigate_mqtt_user: ""
+frigate_mqtt_password: ""
+
+# Detector config (simple CPU only for now)
+frigate_detectors:
+  cpu1:
+    type: cpu
+
+# go2rtc integration assumption
+# Legacy (no longer used in generated config; retained for backward compatibility)
+frigate_ui_live_provider: go2rtc
+frigate_go2rtc_streams: {}
+
+# Optional hardware placeholders (commented in templates)
+frigate_hw_devices: []  # e.g. ['/dev/dri'] later
+frigate_hw_environment: {}  # e.g. { LIBVA_DRIVER_NAME: iHD }
+
+# Cameras definition (must be a mapping; empty {} is valid)
+frigate_cameras: {}
+
+# Add a dummy camera if enabled and no real cameras defined (workaround for validation/testing)
+frigate_enable_dummy_camera: true
+
+# Internal control
+frigate_debug_diff: true

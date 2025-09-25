@@ -154,3 +154,82 @@ pve-create-zfs-mirror-force:
     -v \
     -e zfs_redeploy=true -e zfs_force_wipe=true
 
+
+frigate-logs-tail:
+    ssh root@192.168.6.111 "docker logs --tail 20 frigate"
+
+# --- Frigate diagnostic helpers ---
+# Quick view of the first lines after container start
+frigate-logs-head:
+    # Show the first 120 lines from full log
+    ssh root@192.168.6.111 "docker --head 120 logs frigate "
+
+# Show recent detailed tail (larger window)
+frigate-logs-tail200:
+    ssh root@192.168.6.111 "docker logs --tail 200 frigate"
+
+# Filter for errors / tracebacks (last 80 matching lines)
+frigate-logs-errors:
+    # Grab a recent slice then filter to reduce load
+    ssh root@192.168.6.111 "docker logs --tail 400 frigate | grep -i -E 'traceback|exception|error|critical' | tail -n 80 || true"
+
+# Show current effective config inside the container (first 80 lines)
+frigate-config-show:
+    ssh root@192.168.6.111 "docker exec frigate sed -n '1,80p' /config/config.yml"
+
+# Process snapshot (python module + nginx workers)
+frigate-ps:
+    ssh root@192.168.6.111 "docker exec frigate ps -eo pid,ppid,cmd --sort=pid | head -n 60"
+
+# Health and restart counters
+frigate-health:
+    ssh root@192.168.6.111 "docker inspect frigate --format 'RestartCount={{'{{'}}.RestartCount{{'}}'}} Health={{'{{'}}.State.Health.Status{{'}}'}} StartedAt={{'{{'}}.State.StartedAt{{'}}'}}'"
+
+# Raw Frigate internal s6 log (first 200 lines)
+frigate-log-raw:
+    ssh root@192.168.6.111 "docker exec frigate sed -n '1,200p' /dev/shm/logs/frigate/current || echo 'raw log missing'"
+
+# Tail of raw Frigate internal log (last 120 lines)
+frigate-log-raw-tail:
+    ssh root@192.168.6.111 "docker exec frigate tail -n 120 /dev/shm/logs/frigate/current || echo 'raw log missing'"
+
+# Socket listeners inside container (ports)
+frigate-sockets:
+    ssh root@192.168.6.111 "docker exec frigate sh -c 'ss -ltnp || netstat -ltnp'"
+
+## Additional deep-dive helpers
+frigate-config-files:
+    # Simple: list /config and show first 120 lines of primary config.yml only
+    ssh root@192.168.6.111 "docker exec frigate sh -c 'ls -l /config; echo ==== /config/config.yml ====; sed -n \"1,120p\" /config/config.yml'"
+
+frigate-config-clean-backups:
+    # Remove any backup/extra config copies to keep things minimal
+    ssh root@192.168.6.111 "docker exec frigate sh -c 'rm -f /config/backup_config.yaml /config/config.*.bak 2>/dev/null || true; ls -l /config'"
+
+frigate-config-grep-ui:
+    # Search recursively in /config for legacy ui.live_provider key
+    ssh root@192.168.6.111 "docker exec frigate sh -c 'grep -RIn \"ui.live_provider\" /config || echo not_found'"
+
+frigate-env:
+    # Show environment variables related to Frigate that might override config path
+    ssh root@192.168.6.111 "docker exec frigate env | grep -i -E '^FRIGATE|CONFIG' || true"
+
+frigate-restart:
+    # Force a restart via docker (stateless) to pick up config changes immediately
+    ssh root@192.168.6.111 "docker restart frigate"
+
+## Minimal debug bundle (aggregates key Frigate recipes into one timestamped file)
+frigate-debug-bundle:
+    ts=$(date +%Y%m%d-%H%M%S); out="frigate-debug-$${ts}.txt"; \
+    echo "==== FRIGATE DEBUG $${ts} ====" > "$${out}"; \
+    echo "Timestamp: $$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$${out}"; \
+    echo "-- Health --" >> "$${out}"; just frigate-health >> "$${out}" 2>&1 || true; \
+    echo "-- Raw Log (head 200) --" >> "$${out}"; just frigate-log-raw >> "$${out}" 2>&1 || true; \
+    echo "-- Logs (head) --" >> "$${out}"; just frigate-logs-head >> "$${out}" 2>&1 || true; \
+    echo "-- Logs (tail200) --" >> "$${out}"; just frigate-logs-tail200 >> "$${out}" 2>&1 || true; \
+    echo "-- Error Lines --" >> "$${out}"; just frigate-logs-errors >> "$${out}" 2>&1 || true; \
+    echo "-- Config (first 80) --" >> "$${out}"; just frigate-config-show >> "$${out}" 2>&1 || true; \
+    echo "-- Process Snapshot --" >> "$${out}"; just frigate-ps >> "$${out}" 2>&1 || true; \
+    echo "-- Sockets --" >> "$${out}"; just frigate-sockets >> "$${out}" 2>&1 || true; \
+    echo "==== END ====" >> "$${out}"; \
+    echo "Saved $${out}"
