@@ -403,6 +403,7 @@ lxc:
     template_os_type: debian
     unprivileged: false
     feature_nesting: true
+    gpu_passthrough: true
     mount_points:
       - host_path: "/tank"
         container_path: "/tank"

@@ -244,6 +244,12 @@ variable "feature_nesting" {
   default     = false
 }
 
+variable "gpu_passthrough" {
+  description = "Enable GPU passthrough for hardware acceleration (Intel iGPU)"
+  type        = bool
+  default     = false
+}
+
 variable "mount_points" {
   description = "List of mount points to bind from host to container"
   type = list(object({

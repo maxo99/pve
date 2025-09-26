@@ -35,10 +35,16 @@ frigate_mqtt_host: ""
 frigate_mqtt_user: ""
 frigate_mqtt_password: ""
 
-# Detector config (simple CPU only for now)
+# Detector config (CPU as fallback, VAAPI for hardware acceleration)
 frigate_detectors:
   cpu1:
     type: cpu
+
+# Hardware acceleration detector (VAAPI for Intel iGPU)
+frigate_hardware_detectors:
+  vaapi1:
+    type: vaapi
+    device: /dev/dri/renderD128
 
 # go2rtc integration assumption
 # Legacy (no longer used in generated config; retained for backward compatibility)

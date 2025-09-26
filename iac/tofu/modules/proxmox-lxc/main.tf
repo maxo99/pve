@@ -105,6 +105,23 @@ resource "proxmox_virtual_environment_container" "lxc" {
     }
   }
 
+  # GPU passthrough configuration for hardware acceleration
+  dynamic "device_passthrough" {
+    for_each = var.gpu_passthrough ? [1] : []
+    content {
+      path = "/dev/dri/card1"
+      mode = "0666"
+    }
+  }
+  
+  dynamic "device_passthrough" {
+    for_each = var.gpu_passthrough ? [1] : []
+    content {
+      path = "/dev/dri/renderD128"
+      mode = "0666"
+    }
+  }
+
   startup {
     order      = var.lxc_index
     up_delay   = "60"

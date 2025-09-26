@@ -46,6 +46,7 @@ module "lxcs" {
   datastore_id    = lookup(each.value, "datastore_id", var.default_datastore)
   feature_nesting = lookup(each.value, "feature_nesting", false)
   unprivileged    = lookup(each.value, "unprivileged", true)
+  gpu_passthrough = lookup(each.value, "gpu_passthrough", false)
   packages        = lookup(each.value, "packages", [])
   custom_scripts  = lookup(each.value, "custom_scripts", [])
   start_on_boot   = lookup(each.value, "start_on_boot", true)

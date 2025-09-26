@@ -6,14 +6,19 @@ frigate_enable_dummy_camera: false
 
 # Camera credentials - using admin credentials for RTSP
 frigate_camera_user: admin
-frigate_camera_password: "P@ssw0rd"
+
+# Hardware acceleration - keep CPU detector but use VAAPI for ffmpeg
+frigate_detectors:
+  cpu1:
+    type: cpu
+    num_threads: 3
 
 # go2rtc stream configuration
 frigate_go2rtc_streams:
   # Front camera substream (lower resolution for detection)
   front1-sub: "rtsp://{{ frigate_camera_user }}:{{ frigate_camera_password }}@192.168.6.129/cam/realmonitor?channel=1&subtype=1"
 
-# Camera configuration
+# Camera configuration - starting with CPU only, add HW accel later
 frigate_cameras:
   front1:
     ffmpeg:
