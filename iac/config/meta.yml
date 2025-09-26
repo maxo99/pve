@@ -412,40 +412,6 @@ lxc:
     custom_scripts:
       - frigate.sh
 
-  # 112 - Immich Photo Server
-  - container_name: immich
-    container_id: 112
-    node_name: pve-01
-    description: Container LXC Immich Photo Server
-    dashboard: http://192.168.6.112:2283
-    tags:
-      - photos
-      - immich
-      - lxc
-    ip_config:
-      ipv4_address: 192.168.6.112/22
-      gateway: 192.168.4.1
-    datastore_id: local-lvm
-    template_os_type: debian
-    unprivileged: false
-    feature_nesting: true
-    gpu_passthrough: true
-    mount_points:
-      - host_path: "/tank"
-        container_path: "/tank"
-        options: bind
-    packages:
-      - curl
-      - gnupg
-      - lsb-release
-      - apt-transport-https
-      - ca-certificates
-      - jq
-      - postgresql-client
-      - redis-tools
-    custom_scripts:
-      - immich.sh
-
   # 200 - Proxmox Backup Server
   - container_name: proxmox-backup-server
     container_id: 200

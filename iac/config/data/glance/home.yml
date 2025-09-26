@@ -1,6 +1,4 @@
 - name: Home
-  # Optionally, if you only have a single page you can hide the desktop navigation for a cleaner look
-  # hide-desktop-navigation: true
   columns:
     - size: small
       widgets:
@@ -20,15 +18,25 @@
             - url: https://samwho.dev/rss.xml
             - url: https://ishadeed.com/feed.xml
               title: Ahmad Shadeed
-
-        - type: twitch-channels
-          channels:
-            - theprimeagen
-            - j_blow
-            - giantwaffle
-            - cohhcarnage
-            - christitustech
-            - EJ_SA
+        - type: monitor
+          cache: 1m
+          title: Services
+          sites:
+            - title: Jellyfin
+              url: https://jellyfin.yourdomain.com
+              icon: /assets/jellyfin-logo.png
+            - title: Gitea
+              url: https://gitea.yourdomain.com
+              icon: /assets/gitea-logo.png
+            - title: Immich
+              url: https://immich.yourdomain.com
+              icon: /assets/immich-logo.png
+            - title: AdGuard Home
+              url: https://adguard.yourdomain.com
+              icon: /assets/adguard-logo.png
+            - title: Vaultwarden
+              url: https://vault.yourdomain.com
+              icon: /assets/vaultwarden-logo.png
 
     - size: full
       widgets:
@@ -57,11 +65,9 @@
     - size: small
       widgets:
         - type: weather
-          location: London, United Kingdom
-          units: metric # alternatively "imperial"
+          location: Tampa, Florida, United States
+          units: imperial # alternatively "imperial"
           hour-format: 12h # alternatively "24h"
-          # Optionally hide the location from being displayed in the widget
-          # hide-location: true
 
         - type: markets
           markets:
