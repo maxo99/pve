@@ -25,33 +25,26 @@ vm:
     custom_scripts: []
 
 lxc: 
-  # 100 - HomePage Dashboard
-  - container_name: homepage
+  # 100 - Traefik Reverse Proxy
+  - container_name: traefik
     container_id: 100
     node_name: pve-01
-    description: Container LXC HomePage Dashboard Service
-    memory: 4096
-    cores: 2
-    disk_size: 6
-    dashboard: http://192.168.6.100:3000/system
-    datastore_id: local-lvm
+    description: Container LXC Traefik Reverse Proxy
+    dashboard: http://192.168.6.100:8080
     ip_config:
       ipv4_address: 192.168.6.100/22
       gateway: 192.168.4.1
+    datastore_id: local-lvm
     tags:
-      - dashboard
-      - web
-      - homepage
+      - proxy
+      - traefik
       - lxc
     packages:
       - curl
-      - wget
-      - gnupg
-      - ca-certificates
       - jq
-      - git
+      - ca-certificates
     custom_scripts:
-      - homepage.sh
+      - traefik.sh
 
   # 101 - Cockpit Management Interface
   - container_name: cockpit
@@ -108,6 +101,36 @@ lxc:
       - wget
     custom_scripts:
       - cockpit.sh
+
+
+  # 102 - HomePage Dashboard
+  - container_name: homepage
+    container_id: 102
+    node_name: pve-01
+    description: Container LXC HomePage Dashboard Service
+    memory: 4096
+    cores: 2
+    disk_size: 6
+    dashboard: http://192.168.6.102:3000/system
+    datastore_id: local-lvm
+    ip_config:
+      ipv4_address: 192.168.6.100/22
+      gateway: 192.168.4.1
+    tags:
+      - dashboard
+      - web
+      - homepage
+      - lxc
+    packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - jq
+      - git
+    custom_scripts:
+      - homepage.sh
+
 
   # 103 - Jellyfin Media Server
   - container_name: jellyfin
