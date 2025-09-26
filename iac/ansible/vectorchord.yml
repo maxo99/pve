@@ -1,0 +1,144 @@
+---
+- name: Install VectorChord on PostgreSQL host and enable extension
+  hosts: postgresql
+  become: true
+  gather_facts: true
+
+  vars:
+    vchord_release: "0.4.3"
+    immich_db_name: "immich"
+
+  tasks:
+    - name: Ensure APT prerequisites present
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - gnupg
+          - apt-transport-https
+          - lsb-release
+        state: present
+        update_cache: true
+
+    - name: Add PostgreSQL PGDG APT key
+      ansible.builtin.apt_key:
+        url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        state: present
+
+    - name: Add PostgreSQL PGDG repository
+      ansible.builtin.apt_repository:
+        repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+        state: present
+        filename: pgdg
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+    - name: Detect PostgreSQL major version
+      ansible.builtin.shell: "ls /etc/postgresql | head -1"
+      register: pgver
+      changed_when: false
+
+    - name: Ensure curl is installed
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Download VectorChord package
+      ansible.builtin.get_url:
+        url: "https://github.com/tensorchord/vectorchord/releases/download/{{ vchord_release }}/postgresql-{{ pgver.stdout }}-vchord_{{ vchord_release }}-1_amd64.deb"
+        dest: "/tmp/vchord_{{ vchord_release }}.deb"
+        mode: '0644'
+
+    - name: Install VectorChord package
+      ansible.builtin.apt:
+        deb: "/tmp/vchord_{{ vchord_release }}.deb"
+        state: present
+
+    - name: Enable vchord in shared_preload_libraries
+      ansible.builtin.lineinfile:
+        path: "/etc/postgresql/{{ pgver.stdout }}/main/postgresql.conf"
+        regexp: '^shared_preload_libraries'
+        line: "shared_preload_libraries = 'vchord.so'"
+        create: no
+
+    - name: Restart PostgreSQL
+      ansible.builtin.service:
+        name: postgresql
+        state: restarted
+
+    - name: Check if Immich database exists
+      become_user: postgres
+      ansible.builtin.command:
+        argv:
+          - psql
+          - -tAc
+          - "SELECT 1 FROM pg_database WHERE datname='{{ immich_db_name }}';"
+      register: immich_db_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Create Immich database if missing
+      become_user: postgres
+      ansible.builtin.command:
+        argv:
+          - createdb
+          - "{{ immich_db_name }}"
+      when: immich_db_exists.stdout.strip() != '1'
+
+    - name: Install pgvector package for PostgreSQL
+      ansible.builtin.apt:
+        name: "postgresql-{{ pgver.stdout }}-pgvector"
+        state: present
+        update_cache: true
+      register: pgvector_pkg
+      failed_when: false
+
+    - name: Create pgvector extension in Immich database
+      become_user: postgres
+      ansible.builtin.command:
+        argv:
+          - psql
+          - -d
+          - "{{ immich_db_name }}"
+          - -c
+          - "CREATE EXTENSION IF NOT EXISTS vector;"
+      register: create_vec
+      changed_when: "'CREATE EXTENSION' in create_vec.stdout"
+      failed_when: create_vec.rc != 0
+
+    - name: Create VectorChord extension in Immich database
+      become_user: postgres
+      ansible.builtin.command:
+        argv:
+          - psql
+          - -d
+          - "{{ immich_db_name }}"
+          - -c
+          - "CREATE EXTENSION IF NOT EXISTS vchord CASCADE;"
+      register: create_ext
+      changed_when: "'CREATE EXTENSION' in create_ext.stdout"
+
+    - name: Create cube extension in Immich database (required by earthdistance)
+      become_user: postgres
+      ansible.builtin.command:
+        argv:
+          - psql
+          - -d
+          - "{{ immich_db_name }}"
+          - -c
+          - "CREATE EXTENSION IF NOT EXISTS cube;"
+      register: create_cube
+      changed_when: "'CREATE EXTENSION' in create_cube.stdout"
+
+    - name: Create earthdistance extension in Immich database
+      become_user: postgres
+      ansible.builtin.command:
+        argv:
+          - psql
+          - -d
+          - "{{ immich_db_name }}"
+          - -c
+          - "CREATE EXTENSION IF NOT EXISTS earthdistance;"
+      register: create_earth
+      changed_when: "'CREATE EXTENSION' in create_earth.stdout"
