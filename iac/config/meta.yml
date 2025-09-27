@@ -543,9 +543,40 @@ lxc:
       - influxdb.sh
 
 
-  # # 204 - MongoDB Database
+  # 204 - CouchDB Database
+  - container_name: couchdb
+    container_id: 204
+    node_name: pve-01
+    description: Container LXC CouchDB NoSQL Database
+    dashboard: http://192.168.6.204:5984/_utils/
+    tags:
+      - db
+      - couchdb
+      - nosql
+      - lxc
+    memory: 4096
+    cores: 2
+    disk_size: 10
+    ip_config:
+      ipv4_address: 192.168.6.204/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    mount_points:
+      - host_path: "/tank"
+        container_path: "/mnt/tank"
+        options: bind
+    packages:
+      - apt-transport-https
+      - gnupg
+      - curl
+      - ca-certificates
+    custom_scripts:
+      - couchdb.sh
+
+
+  # # 205 - MongoDB Database
   # - container_name: mongodb
-  #   container_id: 204
+  #   container_id: 205
   #   node_name: pve-01
   #   description: Container LXC MongoDB
   #   tags:
@@ -557,7 +588,7 @@ lxc:
   #   cores: 1
   #   disk_size: 6
   #   ip_config:
-  #     ipv4_address: 192.168.6.204/22
+  #     ipv4_address: 192.168.6.205/22
   #     gateway: 192.168.4.1
   #   datastore_id: local-lvm
   #   packages:
