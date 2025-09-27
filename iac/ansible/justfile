@@ -233,3 +233,6 @@ frigate-debug-bundle:
     echo "-- Sockets --" >> "$${out}"; just frigate-sockets >> "$${out}" 2>&1 || true; \
     echo "==== END ====" >> "$${out}"; \
     echo "Saved $${out}"
+
+dns-test:
+    dig +short @192.168.4.1 google.com

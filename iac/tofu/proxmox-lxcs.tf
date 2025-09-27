@@ -49,6 +49,8 @@ module "lxcs" {
   gpu_passthrough = lookup(each.value, "gpu_passthrough", false)
   packages        = lookup(each.value, "packages", [])
   custom_scripts  = lookup(each.value, "custom_scripts", [])
+  pre_confs       = lookup(each.value, "pre_confs", [])
+  post_confs      = lookup(each.value, "post_confs", [])
   start_on_boot   = lookup(each.value, "start_on_boot", true)
   mount_points    = lookup(each.value, "mount_points", [])
   template_os_type = lookup(each.value, "template_os_type", null)

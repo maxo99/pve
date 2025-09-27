@@ -138,6 +138,25 @@ variable "custom_scripts" {
   default     = []
 }
 
+variable "pre_confs" {
+  description = "Config file mappings applied before custom init (pre-install). Use 'src:dest' with src relative to config_path (e.g., /lxcs/confs/foo.toml:/etc/app/foo.toml)"
+  type        = list(string)
+  default     = []
+}
+
+variable "post_confs" {
+  description = "Config file mappings applied after custom init (post-install). Use 'src:dest' with src relative to config_path (e.g., /lxcs/confs/foo.toml:/etc/app/foo.toml)"
+  type        = list(string)
+  default     = []
+}
+
+# Deprecated: kept for backward-compatibility (unused)
+variable "confs" {
+  description = "[Deprecated] Use pre_confs/post_confs instead."
+  type        = list(string)
+  default     = []
+}
+
 variable "ssh_public_key" {
   description = "SSH public key for access"
   type        = string

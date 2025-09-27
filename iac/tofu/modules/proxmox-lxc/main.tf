@@ -21,6 +21,11 @@ resource "proxmox_virtual_environment_download_file" "container_template" {
 }
 
 resource "proxmox_virtual_environment_container" "lxc" {
+  depends_on = [
+    proxmox_virtual_environment_file.lxc_helpers,
+    proxmox_virtual_environment_file.lxc_init_script,
+    proxmox_virtual_environment_file.lxc_conf_files,
+  ]
   node_name           = var.node_name
   vm_id               = var.container_id
   description         = var.description

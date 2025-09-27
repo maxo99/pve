@@ -12,11 +12,17 @@ fi
 
 # Container filesystem path
 CT_PATH="/var/lib/lxc/$VMID/rootfs"
+STAGE_DIR="/root/.lxc-confs"
 
 echo "Starting LXC container initialization for ${container_name} (ID: $VMID) at $(date +%s)"
 
 # Wait for container to be ready
 sleep 20
+
+# Prepare staging directory inside container for managed config files
+lxc-attach -n "$VMID" -- mkdir -p "$STAGE_DIR"
+lxc-attach -n "$VMID" -- chown root:root "$STAGE_DIR"
+lxc-attach -n "$VMID" -- chmod 0755 "$STAGE_DIR"
 
 # Function to execute commands inside the container
 lxc_exec() {
@@ -74,6 +80,36 @@ lxc_exec_with_helpers "ensure_directory '${mount_point.container_path}' 'root:ro
 echo "Starting SSH service..."
 lxc_exec_with_helpers "ensure_service_running ssh"
 
+%{ if length(pre_conf_files) > 0 ~}
+# Apply pre-install configuration files
+echo "Applying pre-install configuration files..."
+%{ for cf in pre_conf_files ~}
+echo " - Installing ${cf.dest} (pre)"
+SNIP_FILE="/var/lib/vz/snippets/${container_id}-${container_name}-${replace(basename(cf.src), ".", "_")}" 
+DEST_PATH="${cf.dest}"
+PARENT_DIR="$(dirname "$DEST_PATH")"
+lxc-attach -n "$VMID" -- /bin/sh -lc "echo 'Ensuring directory: ' \"$PARENT_DIR\""
+lxc-attach -n "$VMID" -- mkdir -p "$PARENT_DIR"
+if [ ! -f "$SNIP_FILE" ]; then
+    echo "WARNING: Snippet file not found: $SNIP_FILE (skipping ${cf.dest})"
+else
+lxc-attach -n "$VMID" -- mkdir -p "$PARENT_DIR"
+lxc-attach -n "$VMID" -- /bin/sh -c "cat > \"$DEST_PATH\"" < "$SNIP_FILE"
+lxc-attach -n "$VMID" -- chown root:root "$DEST_PATH"
+lxc-attach -n "$VMID" -- chmod 0644 "$DEST_PATH"
+    lxc-attach -n "$VMID" -- /bin/sh -lc "ls -l \"$DEST_PATH\" || true"
+    # Always stage a copy for downstream (e.g., Ansible) consumption
+    STAGE_DEST="$STAGE_DIR$DEST_PATH"
+    STAGE_PARENT="$(dirname "$STAGE_DEST")"
+    lxc-attach -n "$VMID" -- mkdir -p "$STAGE_PARENT"
+    lxc-attach -n "$VMID" -- /bin/sh -c "cat > \"$STAGE_DEST\"" < "$SNIP_FILE"
+    lxc-attach -n "$VMID" -- chown root:root "$STAGE_DEST"
+    lxc-attach -n "$VMID" -- chmod 0644 "$STAGE_DEST"
+    lxc-attach -n "$VMID" -- /bin/sh -lc "echo 'Staged at: ' \"$STAGE_DEST\" && ls -l \"$STAGE_DEST\" || true"
+fi
+%{ endfor ~}
+%{ endif ~}
+
 %{ if has_init_script ~}
 # Copy and execute the native custom script
 echo "Copying custom script to container..."
@@ -100,6 +136,36 @@ echo "Cleaning up temporary files..."
 lxc_exec rm -f /tmp/custom-init.sh
 %{ else ~}
 echo "No custom initialization needed"
+%{ endif ~}
+
+%{ if length(post_conf_files) > 0 ~}
+# Stage post-install configuration files (do not apply to final destinations here)
+POST_CONF_MARKER="/etc/.lxc_post_confs_staged"
+if lxc-attach -n "$VMID" -- test -f "$POST_CONF_MARKER"; then
+    echo "Post-install configuration already staged; skipping."
+else
+    echo "Waiting for services to settle before staging post-install configuration files..."
+    sleep 10
+    echo "Staging post-install configuration files to $STAGE_DIR..."
+    %{ for cf in post_conf_files ~}
+    echo " - Staging ${cf.dest} (post)"
+    SNIP_FILE="/var/lib/vz/snippets/${container_id}-${container_name}-${replace(basename(cf.src), ".", "_")}" 
+    DEST_PATH="${cf.dest}"
+    STAGE_DEST="$STAGE_DIR$DEST_PATH"
+    STAGE_PARENT="$(dirname "$STAGE_DEST")"
+    if [ ! -f "$SNIP_FILE" ]; then
+        echo "WARNING: Snippet file not found: $SNIP_FILE (skipping stage for ${cf.dest})"
+    else
+        lxc-attach -n "$VMID" -- mkdir -p "$STAGE_PARENT"
+        lxc-attach -n "$VMID" -- /bin/sh -c "cat > \"$STAGE_DEST\"" < "$SNIP_FILE"
+        lxc-attach -n "$VMID" -- chown root:root "$STAGE_DEST"
+        lxc-attach -n "$VMID" -- chmod 0644 "$STAGE_DEST"
+        lxc-attach -n "$VMID" -- /bin/sh -lc "ls -l \"$STAGE_DEST\" || true"
+    fi
+    %{ endfor ~}
+    # Create marker so this section runs only once
+    lxc-attach -n "$VMID" -- /bin/sh -c "date -u > \"$POST_CONF_MARKER\""
+fi
 %{ endif ~}
 
 # Clean up helpers file in container

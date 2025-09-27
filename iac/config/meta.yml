@@ -566,3 +566,32 @@ lxc:
   #     - ca-certificates
   #   custom_scripts:
   #     - mongodb.sh
+
+  # 699 - Pi-hole DNS Ad-blocker
+  - container_name: pihole
+    container_id: 699
+    node_name: pve-01
+    description: Container LXC Pi-hole DNS Ad-blocker
+    dashboard: http://192.168.6.99/admin
+    tags:
+      - adblock
+      - pihole
+      - lxc
+    memory: 1024
+    cores: 1
+    disk_size: 4
+    ip_config:
+      ipv4_address: 192.168.6.99/22
+      gateway: 192.168.4.1
+    datastore_id: local-lvm
+    template_os_type: debian
+    packages:
+      - curl
+      - ca-certificates
+      - jq
+    custom_scripts:
+      - pihole.sh
+    pre_confs:
+      - /lxcs/confs/pihole/setupVars.conf:/etc/pihole/setupVars.conf
+    post_confs:
+      - /lxcs/confs/pihole/pihole.toml:/etc/pihole/pihole.toml

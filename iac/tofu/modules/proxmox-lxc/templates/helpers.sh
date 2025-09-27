@@ -2,6 +2,13 @@
 # Common helper functions for LXC scripts
 # These functions ensure idempotent operations
 
+# Simple message helpers (provide compatibility with scripts using msg_*)
+msg_info()   { echo -e "[INFO]  $*"; }
+msg_ok()     { echo -e "[ OK ]  $*"; }
+msg_warn()   { echo -e "[WARN]  $*"; }
+msg_error()  { echo -e "[ERR ]  $*" 1>&2; }
+msg_custom() { local _prefix=${1:-""}; shift; local _color=${1:-""}; shift; echo -e "${_prefix}${_color}$*\e[0m"; }
+
 # Package management helpers
 ensure_packages() {
     export DEBIAN_FRONTEND=noninteractive
