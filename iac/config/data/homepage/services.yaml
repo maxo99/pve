@@ -8,7 +8,9 @@
     - HomeAssistant:
         icon: https://github.com/walkxcode/Dashboard-Icons/tree/main/png/home-assistant-alt.png
         description: Need DHCP lookup 
-
+    - Glance:
+        icon: glance.png
+        href: http://192.168.6.107:8080
     - solo-Grafana:
         icon: grafana.png
         href: http://192.168.6.105:3000
@@ -21,8 +23,24 @@
     - docker-InfluxDB:
         icon: influxdb.png
         href: http://192.168.6.110:8086
-
-
+    - Linkwarden:
+        icon: linkwarden.png
+        href: http://192.168.6.108:3000
+    - go2rtc:
+        icon: go2rtc.png
+        href: http://192.168.6.111:1984/
+    - amcrest:
+        icon: amcrest.png
+        href: http://192.168.6.129/
+    - frigate:
+        icon: frigate.png
+        href: http://192.168.6.111:5000/
+    - traefik:
+        icon: traefik.png
+        href: http://192.168.6.100:8080
+    - pihole:
+        icon: pihole.png
+        href: http://192.168.6.99/admin/    
 
 - Media:
     - Jellyfin:
@@ -31,7 +49,9 @@
     - Jellyseerr:
         icon: https://github.com/walkxcode/Dashboard-Icons/tree/main/png/jellyseerr.png
         href: http://192.168.6.104:5055
-
+    - Paperless-ngx:
+        icon: paperless.png
+        href: http://192.168.6.109:8000
 
 - Infrastructure:
     - Proxmox VE:
